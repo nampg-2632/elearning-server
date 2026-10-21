@@ -2,8 +2,10 @@ import { plainToInstance, Type } from 'class-transformer';
 import {
   IsEnum,
   IsInt,
+  IsOptional,
   IsString,
   IsUrl,
+  Matches,
   Max,
   Min,
   validateSync,
@@ -30,6 +32,15 @@ class EnvironmentVariables {
 
   @IsUrl({ require_tld: false })
   APP_URL: string = 'http://localhost:3000';
+
+  // Path segments without leading/trailing slash, e.g. "api/v1".
+  @Matches(/^[a-z0-9-]+(\/[a-z0-9-]+)*$/)
+  API_PREFIX: string = 'api/v1';
+
+  // Comma-separated list of allowed origins; empty disables CORS.
+  @IsOptional()
+  @IsString()
+  CORS_ORIGINS?: string;
 
   @IsEnum(['vi', 'en'])
   FALLBACK_LANGUAGE: string = 'vi';

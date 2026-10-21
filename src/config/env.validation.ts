@@ -1,7 +1,9 @@
 import { plainToInstance, Type } from 'class-transformer';
 import {
+  IsBooleanString,
   IsEnum,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
   IsUrl,
@@ -44,6 +46,18 @@ class EnvironmentVariables {
 
   @IsEnum(['vi', 'en'])
   FALLBACK_LANGUAGE: string = 'vi';
+
+  @IsNotEmpty()
+  @IsString()
+  DATABASE_URL!: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  DATABASE_POOL_MAX: number = 10;
+
+  @IsBooleanString()
+  DATABASE_LOGGING: string = 'false';
 }
 
 // Used by ConfigModule.forRoot({ validate }): the app refuses to boot with a

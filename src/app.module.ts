@@ -10,7 +10,9 @@ import { join } from 'node:path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { appConfig } from './config/app.config';
+import { databaseConfig } from './config/database.config';
 import { validateEnv } from './config/env.validation';
+import { DatabaseModule } from './database/database.module';
 
 @Module({
   imports: [
@@ -18,7 +20,7 @@ import { validateEnv } from './config/env.validation';
       isGlobal: true,
       cache: true,
       envFilePath: ['.env.local', '.env'],
-      load: [appConfig],
+      load: [appConfig, databaseConfig],
       validate: validateEnv,
     }),
     // Language is resolved per request: ?lang=en, then the x-lang header,
@@ -39,6 +41,7 @@ import { validateEnv } from './config/env.validation';
         AcceptLanguageResolver,
       ],
     }),
+    DatabaseModule,
   ],
   controllers: [AppController],
   providers: [AppService],

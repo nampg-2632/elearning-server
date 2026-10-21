@@ -30,6 +30,9 @@ class EnvironmentVariables {
 
   @IsUrl({ require_tld: false })
   APP_URL: string = 'http://localhost:3000';
+
+  @IsEnum(['vi', 'en'])
+  FALLBACK_LANGUAGE: string = 'vi';
 }
 
 // Used by ConfigModule.forRoot({ validate }): the app refuses to boot with a

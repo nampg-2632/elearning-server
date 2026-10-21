@@ -1,0 +1,15 @@
+{
+  "IS_NOT_EMPTY": "{property} không được để trống",
+  "IS_STRING": "{property} phải là chuỗi ký tự",
+  "IS_EMAIL": "{property} không đúng định dạng email",
+  "IS_INT": "{property} phải là số nguyên",
+  "IS_UUID": "{property} phải là UUID hợp lệ",
+  "IS_ENUM": "{property} có giá trị không hợp lệ",
+  "IS_ARRAY": "{property} phải là mảng",
+  "IS_BOOLEAN": "{property} phải là true hoặc false",
+  "IS_DATE_STRING": "{property} phải là ngày hợp lệ (ISO 8601)",
+  "MIN": "{property} phải lớn hơn hoặc bằng {constraints.0}",
+  "MAX": "{property} phải nhỏ hơn hoặc bằng {constraints.0}",
+  "MIN_LENGTH": "{property} phải có ít nhất {constraints.0} ký tự",
+  "MAX_LENGTH": "{property} không được vượt quá {constraints.0} ký tự"
+}

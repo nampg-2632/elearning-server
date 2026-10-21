@@ -11,5 +11,6 @@
   "MIN": "{property} must be greater than or equal to {constraints.0}",
   "MAX": "{property} must be less than or equal to {constraints.0}",
   "MIN_LENGTH": "{property} must be at least {constraints.0} characters",
-  "MAX_LENGTH": "{property} must be at most {constraints.0} characters"
+  "MAX_LENGTH": "{property} must be at most {constraints.0} characters",
+  "PROPERTY_NOT_ALLOWED": "{property} is not allowed"
 }

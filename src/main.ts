@@ -3,7 +3,7 @@ import type { ConfigType } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
-import { I18nValidationExceptionFilter, I18nValidationPipe } from 'nestjs-i18n';
+import { I18nValidationPipe } from 'nestjs-i18n';
 import { AppModule } from './app.module';
 import { appConfig } from './config/app.config';
 import { setupSwagger, SWAGGER_PATH } from './config/swagger';
@@ -19,16 +19,13 @@ async function bootstrap() {
     credentials: true,
   });
   // Validates every DTO; messages declared with i18nValidationMessage() are
-  // translated into the request language by the filter below.
+  // translated into the request language by AllExceptionsFilter.
   app.useGlobalPipes(
     new I18nValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
     }),
-  );
-  app.useGlobalFilters(
-    new I18nValidationExceptionFilter({ detailedErrors: false }),
   );
   app.enableShutdownHooks();
 

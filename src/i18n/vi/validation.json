@@ -11,5 +11,6 @@
   "MIN": "{property} phải lớn hơn hoặc bằng {constraints.0}",
   "MAX": "{property} phải nhỏ hơn hoặc bằng {constraints.0}",
   "MIN_LENGTH": "{property} phải có ít nhất {constraints.0} ký tự",
-  "MAX_LENGTH": "{property} không được vượt quá {constraints.0} ký tự"
+  "MAX_LENGTH": "{property} không được vượt quá {constraints.0} ký tự",
+  "PROPERTY_NOT_ALLOWED": "{property} không được phép gửi lên"
 }

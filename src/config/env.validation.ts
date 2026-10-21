@@ -58,6 +58,13 @@ class EnvironmentVariables {
 
   @IsBooleanString()
   DATABASE_LOGGING: string = 'false';
+
+  @IsNotEmpty()
+  @IsString()
+  REDIS_URL!: string;
+
+  @IsString()
+  REDIS_KEY_PREFIX: string = 'elearning:';
 }
 
 // Used by ConfigModule.forRoot({ validate }): the app refuses to boot with a

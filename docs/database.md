@@ -153,3 +153,33 @@ progress = số lesson trong course mà user có status = pass / tổng số les
 
 Tính bằng query (join `course_lessons` × `user_lessons`). Có thể cache trong Redis
 `progress:{userId}:{courseId}` và xoá cache khi user nộp bài.
+
+## Dữ liệu seed (dev)
+
+Chạy `yarn db:migrate && yarn db:seed`. Seed chạy lại được nhiều lần (ID sinh cố định từ key,
+chỉ upsert) và không chạy khi `NODE_ENV=production`. Dữ liệu nằm ở
+`src/database/seeds/seed-data.ts`.
+
+### Tài khoản
+
+| Email                   | Mật khẩu     | Role    | Họ tên        |
+| ----------------------- | ------------ | ------- | ------------- |
+| `admin@elearning.local` | `Admin12345` | `admin` | Admin         |
+| `user1@elearning.local` | `User12345`  | `user`  | Nguyễn Văn An |
+| `user2@elearning.local` | `User12345`  | `user`  | Trần Thị Bình |
+| `user3@elearning.local` | `User12345`  | `user`  | Lê Minh Châu  |
+
+> Chỉ dùng cho môi trường dev/local.
+
+### Khoá học và đăng ký mẫu
+
+| Khoá học                    | Lesson                                | Đăng ký                                             |
+| --------------------------- | ------------------------------------- | --------------------------------------------------- |
+| TOEIC 600 Vocabulary        | Office, Meetings, Business Travel     | user1 `approved`, user2 `pending`, user3 `rejected` |
+| Business English Essentials | Meetings, Writing Emails, Negotiation | user1 `pending`                                     |
+| IELTS Academic Words        | Environment, Education                | user2 `approved`                                    |
+
+Lesson "Meetings" thuộc 2 khoá (thử quan hệ n-n). Mỗi lesson có 6 từ và 1 bài test 6 câu
+(mỗi câu 4 đáp án, 1 đáp án đúng); `pass_score` = 80, riêng "Writing Emails" = 70.
+Seed không tạo `user_lessons` / `test_attempts`. Trạng thái đăng ký chỉ được tạo lần đầu,
+chạy lại seed không ghi đè thay đổi làm qua API.

@@ -10,6 +10,7 @@ import {
   Matches,
   Max,
   Min,
+  MinLength,
   validateSync,
 } from 'class-validator';
 
@@ -65,6 +66,16 @@ class EnvironmentVariables {
 
   @IsString()
   REDIS_KEY_PREFIX: string = 'elearning:';
+
+  // HS256 signing key; at least 32 characters.
+  @IsString()
+  @MinLength(32)
+  JWT_SECRET!: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(60)
+  JWT_EXPIRES_IN_SECONDS: number = 86400;
 }
 
 // Used by ConfigModule.forRoot({ validate }): the app refuses to boot with a

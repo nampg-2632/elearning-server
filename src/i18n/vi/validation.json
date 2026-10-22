@@ -12,5 +12,6 @@
   "MAX": "{property} phải nhỏ hơn hoặc bằng {constraints.0}",
   "MIN_LENGTH": "{property} phải có ít nhất {constraints.0} ký tự",
   "MAX_LENGTH": "{property} không được vượt quá {constraints.0} ký tự",
+  "PASSWORD_WEAK": "{property} phải có cả chữ và số",
   "PROPERTY_NOT_ALLOWED": "{property} không được phép gửi lên"
 }

@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
-import { hash } from 'argon2';
 import { EntityManager } from 'typeorm';
+import { hashPassword } from '../../common/utils/password';
 import { Course } from '../../courses/entities/course.entity';
 import { CourseLesson } from '../../courses/entities/course-lesson.entity';
 import { UserCourse } from '../../enrollments/entities/user-course.entity';
@@ -30,7 +30,7 @@ async function seedUsersTable(manager: EntityManager): Promise<void> {
     seedUsers.map(async (user) => ({
       id: seedId(`user:${user.key}`),
       email: user.email,
-      passwordHash: await hash(user.password),
+      passwordHash: await hashPassword(user.password),
       fullName: user.fullName,
       role: user.role,
     })),

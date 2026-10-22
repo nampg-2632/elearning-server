@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, type ConfigType } from '@nestjs/config';
-import { APP_FILTER } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import {
   AcceptLanguageResolver,
   HeaderResolver,
@@ -10,8 +10,12 @@ import {
 import { join } from 'node:path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { RolesGuard } from './common/guards/roles.guard';
 import { appConfig } from './config/app.config';
+import { authConfig } from './config/auth.config';
 import { databaseConfig } from './config/database.config';
 import { redisConfig } from './config/redis.config';
 import { validateEnv } from './config/env.validation';
@@ -31,7 +35,7 @@ import { WordsModule } from './words/words.module';
       isGlobal: true,
       cache: true,
       envFilePath: ['.env.local', '.env'],
-      load: [appConfig, databaseConfig, redisConfig],
+      load: [appConfig, authConfig, databaseConfig, redisConfig],
       validate: validateEnv,
     }),
     // Language is resolved per request: ?lang=en, then the x-lang header,
@@ -54,6 +58,7 @@ import { WordsModule } from './words/words.module';
     }),
     DatabaseModule,
     RedisModule,
+    AuthModule,
     UsersModule,
     CoursesModule,
     LessonsModule,
@@ -66,6 +71,9 @@ import { WordsModule } from './words/words.module';
   providers: [
     AppService,
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
+    // Order matters: authenticate first so RolesGuard sees request.user.
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
 export class AppModule {}

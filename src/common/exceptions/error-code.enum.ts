@@ -9,4 +9,8 @@ export enum ErrorCode {
   Conflict = 'CONFLICT',
   TooManyRequests = 'TOO_MANY_REQUESTS',
   InternalServerError = 'INTERNAL_SERVER_ERROR',
+
+  // Auth
+  EmailAlreadyExists = 'EMAIL_ALREADY_EXISTS',
+  InvalidCredentials = 'INVALID_CREDENTIALS',
 }

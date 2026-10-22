@@ -46,18 +46,22 @@ Nguyên tắc:
 
 ## Bước 1 – Schema và seed dữ liệu
 
-- [ ] Migration toàn bộ bảng Phase 1: `users`, `courses`, `lessons`, `course_lessons`, `words`,
+- [x] Migration toàn bộ bảng Phase 1: `users`, `courses`, `lessons`, `course_lessons`, `words`,
       `lesson_words`, `tests`, `questions`, `question_options`, `user_courses`, `user_lessons`,
       `test_attempts`, `attempt_answers`, kèm enum, index, trigger `updated_at`.
-- [ ] Entity TypeORM, đặt trong các module `users`, `courses`, `lessons`, `words`, `tests`,
+      Thêm ràng buộc: tối đa 1 đáp án đúng mỗi câu, tối đa 1 attempt `doing` mỗi user/test,
+      cột kết quả của attempt bắt buộc khi `submitted`.
+- [x] Entity TypeORM, đặt trong các module `users`, `courses`, `lessons`, `words`, `tests`,
       `enrollments`, `progress`.
-- [ ] Seed (`yarn db:seed`): 1 admin, vài user, 2–3 khoá học, mỗi khoá vài lesson, mỗi lesson
+- [x] Seed (`yarn db:seed`): 1 admin, vài user, 2–3 khoá học, mỗi khoá vài lesson, mỗi lesson
       có từ vựng và 1 bài test trắc nghiệm. (Phase 1 chưa có admin CRUD cho lesson/word/test.)
-- [ ] Kiểm tra: migrate → revert → migrate lại; seed chạy lại không nhân đôi dữ liệu.
+      ID sinh cố định từ key nên chạy lại chỉ upsert. Cài `argon2` ngay ở bước này để hash mật
+      khẩu seed. Tài khoản và dữ liệu seed: xem [database.md](database.md#dữ-liệu-seed-dev).
+- [x] Kiểm tra: migrate → revert → migrate lại; seed chạy lại không nhân đôi dữ liệu.
 
 ## Bước 2 – Auth
 
-- [ ] Cài `argon2`, `@nestjs/jwt`, `@nestjs/passport`, `passport`, `passport-jwt`, `@nestjs/throttler`.
+- [ ] Cài `@nestjs/jwt`, `@nestjs/passport`, `passport`, `passport-jwt`, `@nestjs/throttler`.
 - [ ] `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`.
 - [ ] JWT dạng Bearer; logout đưa token vào blacklist trên Redis tới khi hết hạn.
 - [ ] Guard JWT toàn cục (bỏ qua route `@Public()`), bật `RolesGuard` toàn cục, decorator `@CurrentUser()`.

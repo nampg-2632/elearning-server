@@ -15,8 +15,15 @@ import { appConfig } from './config/app.config';
 import { databaseConfig } from './config/database.config';
 import { redisConfig } from './config/redis.config';
 import { validateEnv } from './config/env.validation';
+import { CoursesModule } from './courses/courses.module';
 import { DatabaseModule } from './database/database.module';
+import { EnrollmentsModule } from './enrollments/enrollments.module';
+import { LessonsModule } from './lessons/lessons.module';
+import { ProgressModule } from './progress/progress.module';
 import { RedisModule } from './redis/redis.module';
+import { TestsModule } from './tests/tests.module';
+import { UsersModule } from './users/users.module';
+import { WordsModule } from './words/words.module';
 
 @Module({
   imports: [
@@ -47,6 +54,13 @@ import { RedisModule } from './redis/redis.module';
     }),
     DatabaseModule,
     RedisModule,
+    UsersModule,
+    CoursesModule,
+    LessonsModule,
+    WordsModule,
+    TestsModule,
+    EnrollmentsModule,
+    ProgressModule,
   ],
   controllers: [AppController],
   providers: [

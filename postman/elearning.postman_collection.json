@@ -1,0 +1,256 @@
+{
+  "info": {
+    "_postman_id": "fc3ef860-fb0d-4c84-b881-3fac2bb73f57",
+    "name": "e-Learning API",
+    "description": "API Phase 1 của e-Learning server.\n\n1. Chạy một request trong `Auth / Login ...` hoặc `Register`: token tự lưu vào biến `accessToken` của collection và được gửi kèm (Bearer) cho mọi request khác.\n2. Đổi ngôn ngữ response bằng biến `lang` (`vi` | `en`); đổi server bằng biến `baseUrl` (tab Variables của collection).\n\nTài khoản seed: `admin@elearning.local` / `Admin12345`, `user1..3@elearning.local` / `User12345`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Sends x-lang on every request so responses follow the `lang` variable.",
+          "pm.request.headers.upsert({ key: 'x-lang', value: pm.variables.get('lang') || 'vi' });"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "lang",
+      "value": "vi",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "currentUserId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}",
+          "host": ["{{baseUrl}}"],
+          "path": []
+        },
+        "description": "Route public kiểm tra app đang chạy.",
+        "auth": {
+          "type": "noauth"
+        }
+      }
+    },
+    {
+      "name": "Auth",
+      "description": "Đăng ký, đăng nhập, đăng xuất, thông tin user hiện tại.",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Public. Tạo tài khoản role `user` và trả token.\n\nValidate: `email` đúng định dạng (≤ 320); `password` 8–72 ký tự, có chữ và số; `fullName` 1–100.\n\nLỗi: `409 EMAIL_ALREADY_EXISTS`, `422 VALIDATION_FAILED`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{$randomExampleEmail}}\",\n  \"password\": \"Secret123\",\n  \"fullName\": \"Phạm Giang Nam\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const { accessToken, user } = pm.response.json();",
+                  "  pm.collectionVariables.set('accessToken', accessToken);",
+                  "  pm.collectionVariables.set('currentUserId', user.id);",
+                  "}",
+                  "",
+                  "pm.test('returns an access token', () => {",
+                  "  pm.expect(pm.response.json()).to.have.property('accessToken');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (user1)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Public, giới hạn 5 lần/phút/IP.\n\nLỗi: `401 INVALID_CREDENTIALS`, `429 TOO_MANY_REQUESTS`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user1@elearning.local\",\n  \"password\": \"User12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const { accessToken, user } = pm.response.json();",
+                  "  pm.collectionVariables.set('accessToken', accessToken);",
+                  "  pm.collectionVariables.set('currentUserId', user.id);",
+                  "}",
+                  "",
+                  "pm.test('returns an access token', () => {",
+                  "  pm.expect(pm.response.json()).to.have.property('accessToken');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (admin)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Đăng nhập bằng tài khoản admin seed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@elearning.local\",\n  \"password\": \"Admin12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const { accessToken, user } = pm.response.json();",
+                  "  pm.collectionVariables.set('accessToken', accessToken);",
+                  "  pm.collectionVariables.set('currentUserId', user.id);",
+                  "}",
+                  "",
+                  "pm.test('returns an access token', () => {",
+                  "  pm.expect(pm.response.json()).to.have.property('accessToken');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Thông tin user hiện tại. `401 UNAUTHORIZED` nếu thiếu, sai, hết hạn hoặc đã logout token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Thu hồi token hiện tại (blacklist trên Redis tới khi hết hạn). Trả `204`.\n\nSau khi chạy, gọi lại `Me` sẽ nhận `401`. Script giữ nguyên `accessToken` để thử điều đó; login lại để lấy token mới."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

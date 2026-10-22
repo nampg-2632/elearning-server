@@ -6,5 +6,7 @@
   "NOT_FOUND": "Resource not found",
   "CONFLICT": "Conflicting data",
   "TOO_MANY_REQUESTS": "Too many requests, please try again later",
-  "INTERNAL_SERVER_ERROR": "Something went wrong, please try again later"
+  "INTERNAL_SERVER_ERROR": "Something went wrong, please try again later",
+  "EMAIL_ALREADY_EXISTS": "Email is already in use",
+  "INVALID_CREDENTIALS": "Invalid email or password"
 }

@@ -1,98 +1,121 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# e-Learning Server
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API backend cho hệ thống học từ vựng e-Learning. Người dùng đăng ký khoá học, học từ vựng theo
+lesson và làm bài test trắc nghiệm. Admin quản lý khoá học và duyệt đăng ký.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Công nghệ: NestJS 11, TypeORM, PostgreSQL, Redis, JWT, nestjs-i18n (vi/en), Swagger.
 
-## Description
+## Tài liệu API
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Swagger được sinh từ code, có ở `http://localhost:3000/docs` khi chạy local (tắt khi
+`NODE_ENV=production`).
 
-## Project setup
+## Yêu cầu
+
+- Node.js 20.19+ (xem `.nvmrc`, dùng `nvm use`) và Yarn 1.
+- PostgreSQL 13+ (cần `gen_random_uuid()`).
+- Redis 6+.
+
+## Cài đặt và chạy local
 
 ```bash
-$ yarn install
+nvm use
+yarn install
+
+# 1. Biến môi trường
+cp .env.example .env
+# Đặt JWT_SECRET là chuỗi ngẫu nhiên tối thiểu 32 ký tự, ví dụ:
+#   node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+
+# 2. Tạo database khớp với DATABASE_URL trong .env
+psql -d postgres -c "CREATE ROLE elearning LOGIN PASSWORD 'elearning_dev'"
+psql -d postgres -c "CREATE DATABASE elearning OWNER elearning"
+
+# 3. Tạo bảng và dữ liệu mẫu
+yarn db:migrate
+yarn db:seed
+
+# 4. Chạy ở chế độ watch
+yarn start:dev
 ```
 
-## Compile and run the project
+API chạy ở `http://localhost:3000/api/v1`. Khi khởi động, app kiểm tra biến môi trường và
+kết nối Redis, nếu sai hoặc thiếu sẽ dừng ngay kèm thông báo lỗi.
 
-```bash
-# development
-$ yarn run start
+### Tài khoản seed (chỉ dùng cho dev)
 
-# watch mode
-$ yarn run start:dev
+| Email                   | Mật khẩu     | Role    |
+| ----------------------- | ------------ | ------- |
+| `admin@elearning.local` | `Admin12345` | `admin` |
+| `user1@elearning.local` | `User12345`  | `user`  |
+| `user2@elearning.local` | `User12345`  | `user`  |
+| `user3@elearning.local` | `User12345`  | `user`  |
 
-# production mode
-$ yarn run start:prod
+## Biến môi trường
+
+| Biến                     | Mặc định      | Mô tả                                                |
+| ------------------------ | ------------- | ---------------------------------------------------- |
+| `NODE_ENV`               | `development` | `development` \| `test` \| `production`              |
+| `PORT`                   | `3000`        |                                                      |
+| `APP_NAME`, `APP_URL`    |               | Tên app (Swagger) và URL gốc                         |
+| `API_PREFIX`             | `api/v1`      | Prefix cho mọi route                                 |
+| `CORS_ORIGINS`           |               | Danh sách origin, cách nhau bởi dấu phẩy; rỗng = tắt |
+| `FALLBACK_LANGUAGE`      | `vi`          | Ngôn ngữ mặc định (`vi` \| `en`)                     |
+| `DATABASE_URL`           | **bắt buộc**  | Chuỗi kết nối PostgreSQL                             |
+| `DATABASE_POOL_MAX`      | `10`          |                                                      |
+| `DATABASE_LOGGING`       | `false`       | Log câu SQL                                          |
+| `REDIS_URL`              | **bắt buộc**  |                                                      |
+| `REDIS_KEY_PREFIX`       | `elearning:`  | Prefix cho mọi key Redis                             |
+| `JWT_SECRET`             | **bắt buộc**  | Khoá ký JWT (HS256), tối thiểu 32 ký tự              |
+| `JWT_EXPIRES_IN_SECONDS` | `86400`       | Thời hạn access token                                |
+
+Có thể ghi đè riêng cho máy mình bằng `.env.local` (được ưu tiên hơn `.env`).
+
+## Scripts
+
+| Lệnh                                | Mô tả                                         |
+| ----------------------------------- | --------------------------------------------- |
+| `yarn start:dev`                    | Chạy app, tự reload khi sửa code              |
+| `yarn build` / `yarn start:prod`    | Build ra `dist/` và chạy bản build            |
+| `yarn test` / `yarn test:cov`       | Unit test (`src/**/*.spec.ts`) / kèm coverage |
+| `yarn test:e2e`                     | E2E test (`test/`), cần DB và Redis           |
+| `yarn lint` / `yarn lint:check`     | ESLint có sửa / chỉ kiểm tra                  |
+| `yarn format` / `yarn format:check` | Prettier                                      |
+| `yarn typecheck`                    | Kiểm tra kiểu TypeScript                      |
+| `yarn db:migrate`                   | Chạy các migration chưa chạy                  |
+| `yarn db:migrate:revert`            | Huỷ migration gần nhất                        |
+| `yarn db:migration:show`            | Xem trạng thái migration                      |
+| `yarn db:migration:create <path>`   | Tạo file migration rỗng                       |
+| `yarn db:seed`                      | Nạp dữ liệu mẫu                               |
+
+## Cấu trúc thư mục
+
+```
+src/
+  auth/          Đăng ký, đăng nhập, đăng xuất, JWT strategy và guard
+  users/         Entity User, UsersService
+  courses/       Course, CourseLesson
+  lessons/       Lesson
+  words/         Word, LessonWord
+  tests/         Bài test: LessonTest, Question, QuestionOption, TestAttempt, AttemptAnswer
+  enrollments/   Đăng ký khoá học (UserCourse)
+  progress/      Tiến độ theo lesson (UserLesson)
+  common/        Decorator (@Public, @Roles, @CurrentUser), guard, filter lỗi, phân trang, utils
+  config/        Cấu hình theo nhóm và kiểm tra biến môi trường
+  database/      Cấu hình TypeORM, migrations/, seeds/
+  i18n/          Bản dịch vi/en (errors, validation)
+  redis/         Redis module/service dùng chung
 ```
 
-## Run tests
+## Quy ước
 
-```bash
-# unit tests
-$ yarn run test
-
-# e2e tests
-$ yarn run test:e2e
-
-# test coverage
-$ yarn run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ yarn install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- **Auth:** mọi route cần `Authorization: Bearer <token>` trừ route có `@Public()`. Giới hạn
+  quyền admin bằng `@Roles(UserRole.Admin)`. Đăng xuất đưa token vào blacklist trên Redis.
+- **Ngôn ngữ:** chọn bằng `?lang=`, header `x-lang` hoặc `Accept-Language`; mặc định `vi`.
+- **Lỗi:** mọi lỗi trả cùng format `{ statusCode, code, message, errors?, path, timestamp }`.
+  Lỗi nghiệp vụ dùng `AppException` với `code` cố định và `message` lấy từ `src/i18n/*/errors.json`.
+- **Database:** chỉ đổi schema qua migration (`synchronize` luôn tắt). Bảng và cột dùng
+  `snake_case`, entity dùng `camelCase` (tự đổi bằng `SnakeNamingStrategy`).
+- **Commit:** theo [Conventional Commits](https://www.conventionalcommits.org/), ví dụ
+  `feat(auth): add login rate limit`. Husky chạy lint-staged (ESLint, Prettier) trước khi
+  commit và commitlint kiểm tra commit message.

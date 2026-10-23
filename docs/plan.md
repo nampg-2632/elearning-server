@@ -41,7 +41,7 @@ Nguyên tắc:
 
 ## Bước 0 – Việc lặt vặt
 
-- [ ] Viết lại README theo dự án (hiện là README mặc định của `nest new`).
+- [x] Viết lại README theo dự án (làm cùng commit auth `a3ea68d`).
 - [ ] Xoá nhánh `backup/before-remove-docs` khi đã chắc lịch sử mới ổn.
 
 ## Bước 1 – Schema và seed dữ liệu
@@ -61,12 +61,16 @@ Nguyên tắc:
 
 ## Bước 2 – Auth
 
-- [ ] Cài `@nestjs/jwt`, `@nestjs/passport`, `passport`, `passport-jwt`, `@nestjs/throttler`.
-- [ ] `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`.
-- [ ] JWT dạng Bearer; logout đưa token vào blacklist trên Redis tới khi hết hạn.
-- [ ] Guard JWT toàn cục (bỏ qua route `@Public()`), bật `RolesGuard` toàn cục, decorator `@CurrentUser()`.
-- [ ] Login giới hạn 5 lần/phút. Biến env `JWT_SECRET`, `JWT_EXPIRES_IN_SECONDS`.
-- [ ] Kiểm tra: unit test service; luồng register → login → me → logout → me trả 401.
+Đã merge vào `main` qua PR #1 (`d1099ad`, commit `a3ea68d`).
+
+- [x] Cài `@nestjs/jwt`, `@nestjs/passport`, `passport`, `passport-jwt`, `@nestjs/throttler`.
+- [x] `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`.
+- [x] JWT dạng Bearer; logout đưa token vào blacklist trên Redis tới khi hết hạn.
+- [x] Guard JWT toàn cục (bỏ qua route `@Public()`), bật `RolesGuard` toàn cục, decorator `@CurrentUser()`.
+      Route mẫu `GET /` được đánh dấu `@Public()`.
+- [x] Login giới hạn 5 lần/phút. Biến env `JWT_SECRET`, `JWT_EXPIRES_IN_SECONDS`.
+- [x] Kiểm tra: unit test `AuthService` (8 case) và `JwtStrategy` (3 case, gồm token đã logout
+      bị từ chối).
 
 ## Bước 3 – Admin quản lý khoá học
 

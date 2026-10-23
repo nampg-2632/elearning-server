@@ -13,5 +13,8 @@
   "MIN_LENGTH": "{property} must be at least {constraints.0} characters",
   "MAX_LENGTH": "{property} must be at most {constraints.0} characters",
   "PASSWORD_WEAK": "{property} must contain both letters and numbers",
+  "IS_URL": "{property} must be a valid URL",
+  "ARRAY_UNIQUE": "{property} must not contain duplicates",
+  "DATE_TIMEZONE_REQUIRED": "{property} must be a date (YYYY-MM-DD) or a date-time with a time zone (Z or +07:00)",
   "PROPERTY_NOT_ALLOWED": "{property} is not allowed"
 }

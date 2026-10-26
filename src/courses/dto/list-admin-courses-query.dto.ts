@@ -9,27 +9,23 @@ import {
   MaxLength,
 } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
+import { DATE_OR_ZONED_DATE_TIME_REGEX } from '../../common/constants/date.constants';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { trimString } from '../../common/utils/transforms';
-
-export enum AdminCourseSort {
-  CreatedAtDesc = '-createdAt',
-  CreatedAtAsc = 'createdAt',
-  NameAsc = 'name',
-  NameDesc = '-name',
-}
-
-// A bare date, or a date-time with an explicit offset. A date-time without
-// one would be read in the server's local time zone.
-const DATE_OR_ZONED_DATE_TIME =
-  /^\d{4}-\d{2}-\d{2}(T[^Z+-]+(Z|[+-]\d{2}(:?\d{2})?))?$/i;
+import {
+  COURSE_NAME_MAX_LENGTH,
+  STUDENT_NAME_MAX_LENGTH,
+} from '../courses.constants';
+import { AdminCourseSort } from '../enums/admin-course-sort.enum';
 
 export class ListAdminCoursesQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({ description: 'Course name contains (ILIKE)' })
   @IsOptional()
   @Transform(trimString)
   @IsString({ message: i18nValidationMessage('validation.IS_STRING') })
-  @MaxLength(255, { message: i18nValidationMessage('validation.MAX_LENGTH') })
+  @MaxLength(COURSE_NAME_MAX_LENGTH, {
+    message: i18nValidationMessage('validation.MAX_LENGTH'),
+  })
   keyword?: string;
 
   @ApiPropertyOptional({
@@ -38,7 +34,9 @@ export class ListAdminCoursesQueryDto extends PaginationQueryDto {
   @IsOptional()
   @Transform(trimString)
   @IsString({ message: i18nValidationMessage('validation.IS_STRING') })
-  @MaxLength(100, { message: i18nValidationMessage('validation.MAX_LENGTH') })
+  @MaxLength(STUDENT_NAME_MAX_LENGTH, {
+    message: i18nValidationMessage('validation.MAX_LENGTH'),
+  })
   studentName?: string;
 
   @ApiPropertyOptional({
@@ -50,7 +48,7 @@ export class ListAdminCoursesQueryDto extends PaginationQueryDto {
     { strict: true },
     { message: i18nValidationMessage('validation.IS_DATE_STRING') },
   )
-  @Matches(DATE_OR_ZONED_DATE_TIME, {
+  @Matches(DATE_OR_ZONED_DATE_TIME_REGEX, {
     message: i18nValidationMessage('validation.DATE_TIMEZONE_REQUIRED'),
   })
   createdFrom?: string;
@@ -65,7 +63,7 @@ export class ListAdminCoursesQueryDto extends PaginationQueryDto {
     { strict: true },
     { message: i18nValidationMessage('validation.IS_DATE_STRING') },
   )
-  @Matches(DATE_OR_ZONED_DATE_TIME, {
+  @Matches(DATE_OR_ZONED_DATE_TIME_REGEX, {
     message: i18nValidationMessage('validation.DATE_TIMEZONE_REQUIRED'),
   })
   createdTo?: string;

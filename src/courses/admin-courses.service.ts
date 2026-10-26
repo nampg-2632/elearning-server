@@ -2,6 +2,10 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { paginate, Paginated } from '../common/dto/paginated-response';
+import {
+  DATE_ONLY_REGEX,
+  ONE_DAY_MS,
+} from '../common/constants/date.constants';
 import { AppException } from '../common/exceptions/app.exception';
 import { ErrorCode } from '../common/exceptions/error-code.enum';
 import { containsPattern } from '../common/utils/sql';
@@ -16,11 +20,9 @@ import {
   CourseLessonDto,
 } from './dto/admin-course.dto';
 import { CreateCourseDto } from './dto/create-course.dto';
-import {
-  AdminCourseSort,
-  ListAdminCoursesQueryDto,
-} from './dto/list-admin-courses-query.dto';
+import { ListAdminCoursesQueryDto } from './dto/list-admin-courses-query.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
+import { ADMIN_COURSE_SORT_ORDER } from './courses.constants';
 import { CourseLesson } from './entities/course-lesson.entity';
 import { Course } from './entities/course.entity';
 
@@ -28,16 +30,6 @@ type CourseStats = Pick<
   AdminCourseDto,
   'lessonCount' | 'studentCount' | 'pendingCount'
 >;
-
-const SORT_ORDER: Record<AdminCourseSort, [string, 'ASC' | 'DESC']> = {
-  [AdminCourseSort.CreatedAtDesc]: ['course.createdAt', 'DESC'],
-  [AdminCourseSort.CreatedAtAsc]: ['course.createdAt', 'ASC'],
-  [AdminCourseSort.NameAsc]: ['course.name', 'ASC'],
-  [AdminCourseSort.NameDesc]: ['course.name', 'DESC'],
-};
-
-const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 // Soft-deleted courses are excluded everywhere: TypeORM adds
 // `deleted_at IS NULL` to find/query builder calls on Course.
@@ -85,7 +77,7 @@ export class AdminCoursesService {
     if (query.createdTo) {
       // A bare date includes the whole day, so compare against the next day.
       const createdTo = new Date(query.createdTo);
-      if (DATE_ONLY.test(query.createdTo)) {
+      if (DATE_ONLY_REGEX.test(query.createdTo)) {
         qb.andWhere('course.createdAt < :createdToExclusive', {
           createdToExclusive: new Date(createdTo.getTime() + ONE_DAY_MS),
         });
@@ -94,7 +86,7 @@ export class AdminCoursesService {
       }
     }
 
-    const [sortColumn, sortDirection] = SORT_ORDER[query.sort];
+    const [sortColumn, sortDirection] = ADMIN_COURSE_SORT_ORDER[query.sort];
     // offset/limit instead of skip/take: the only join is many-to-one, so
     // rows are not multiplied and the simpler SQL is enough.
     const [courses, total] = await qb

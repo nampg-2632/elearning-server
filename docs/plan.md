@@ -74,10 +74,17 @@ Nguyên tắc:
 
 ## Bước 3 – Admin quản lý khoá học
 
-- [ ] `GET /admin/courses`: tìm theo tên khoá, tên học viên, khoảng ngày tạo; sắp xếp; phân trang.
-- [ ] `POST`, `GET /:id`, `PATCH`, `DELETE` (soft delete) cho `/admin/courses`.
-- [ ] `PUT /admin/courses/:id/lessons`: gán danh sách lesson theo thứ tự.
-- [ ] `GET /admin/lessons`: danh sách lesson rút gọn cho màn chọn lesson.
+Đang review ở PR #2 (branch `feat/admin-courses`, commit `c896483`, `9ad1eec`).
+
+- [x] `GET /admin/courses`: tìm theo tên khoá, tên học viên, khoảng ngày tạo; sắp xếp; phân trang.
+      Ngày giờ phải có múi giờ; `createdTo` chỉ có ngày thì tính hết ngày đó (UTC).
+- [x] `POST`, `GET /:id`, `PATCH`, `DELETE` (soft delete) cho `/admin/courses`.
+- [x] `PUT /admin/courses/:id/lessons`: gán danh sách lesson theo thứ tự, trong transaction có
+      khoá dòng course để hai request gán cùng lúc không xung đột.
+- [x] `GET /admin/lessons`: danh sách lesson rút gọn cho màn chọn lesson.
+- [x] Query viết bằng QueryBuilder của TypeORM, không dùng SQL thuần.
+- [x] Kiểm tra: chạy thật trên local với dữ liệu seed và collection Postman (folder
+      `Admin – Courses`); unit test cho helper escape LIKE.
 
 ## Bước 4 – Đăng ký khoá học, admin duyệt
 
@@ -86,6 +93,8 @@ Nguyên tắc:
 - [ ] Admin: `GET /admin/user-courses`, `PATCH /admin/user-courses/:id/approve` (từ `pending`),
       `PATCH /admin/user-courses/:id/reject` (từ `pending` hoặc `approved`, kèm `reason` tuỳ chọn).
 - [ ] Không gửi mail ở bước này.
+- [ ] Course đã soft delete không hiện ở `GET /courses`, `GET /me/courses` và
+      `GET /admin/user-courses`; enroll vào course đã xoá trả `404 COURSE_NOT_FOUND`.
 
 ## Bước 5 – Lesson và tiến độ
 

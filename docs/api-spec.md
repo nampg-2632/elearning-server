@@ -380,13 +380,20 @@ Auth. Chỉ gồm từ thuộc lesson của các course mà user đã `approved`
 
 ### GET /admin/courses — Danh sách + search
 
-| Query                      | Mô tả                                                       |
-| -------------------------- | ----------------------------------------------------------- |
-| `keyword`                  | tên khoá học (ILIKE)                                        |
-| `studentName`              | khoá học có học viên (approved/pending) tên chứa chuỗi này  |
-| `createdFrom`, `createdTo` | khoảng ngày tạo (ISO date)                                  |
-| `sort`                     | `-createdAt` (mặc định) \| `createdAt` \| `name` \| `-name` |
-| `page`, `limit`            |                                                             |
+| Query                      | Mô tả                                                                   |
+| -------------------------- | ----------------------------------------------------------------------- |
+| `keyword`                  | tên khoá học chứa chuỗi này (ILIKE, tối đa 255)                         |
+| `studentName`              | khoá học có học viên (approved/pending) tên chứa chuỗi này (tối đa 100) |
+| `createdFrom`, `createdTo` | khoảng ngày tạo, gồm cả hai đầu (xem bên dưới)                          |
+| `sort`                     | `-createdAt` (mặc định) \| `createdAt` \| `name` \| `-name`             |
+| `page`, `limit`            |                                                                         |
+
+- `createdFrom` / `createdTo` nhận ngày `2026-10-01` hoặc ngày giờ có múi giờ
+  (`2026-10-01T10:00:00Z`, `2026-10-01T17:00:00+07:00`). Ngày giờ không có múi giờ trả `422`.
+  `createdTo` chỉ có ngày thì tính hết ngày đó theo UTC.
+- `%` và `_` trong `keyword` / `studentName` được tìm đúng như ký tự thường.
+- `studentCount` là số học viên `approved`, `pendingCount` là số đăng ký `pending`.
+- Kết quả cùng giá trị sắp xếp thì xếp tiếp theo `id`, nên phân trang không trùng hay sót.
 
 ```json
 // 200
@@ -420,17 +427,49 @@ Auth. Chỉ gồm từ thuộc lesson của các course mà user đã `approved`
 }
 ```
 
-`name` bắt buộc, 1–255; `lessonIds` tuỳ chọn, thứ tự trong mảng = `position`.
+`name` bắt buộc, 1–255 (đã trim); `thumbnailUrl` là URL (tối đa 2048) hoặc `null`;
+`lessonIds` tuỳ chọn, là UUID không trùng nhau, thứ tự trong mảng = `position` (bắt đầu từ 1).
 `201` → chi tiết course. Lỗi: `422`, `404 LESSON_NOT_FOUND` (có id không tồn tại).
+
+> Với mọi API có `:courseId`: id không phải UUID trả `400 BAD_REQUEST`; course không tồn tại
+> hoặc đã xoá trả `404 COURSE_NOT_FOUND`.
 
 ### GET /admin/courses/:courseId — Chi tiết
 
-Course + `lessons: [{ id, title, position, wordCount, hasTest }]` + thống kê học viên
-(`studentCount`, `pendingCount`).
+Các field như một item của danh sách, thêm `lessons` theo thứ tự `position`:
+
+```json
+{
+  "id": "c1...",
+  "name": "TOEIC 600 Vocabulary",
+  "lessonCount": 2,
+  "studentCount": 35,
+  "pendingCount": 3,
+  "…": "…",
+  "lessons": [
+    {
+      "id": "l2...",
+      "title": "Office",
+      "position": 1,
+      "wordCount": 6,
+      "hasTest": true
+    },
+    {
+      "id": "l1...",
+      "title": "Meetings",
+      "position": 2,
+      "wordCount": 6,
+      "hasTest": true
+    }
+  ]
+}
+```
 
 ### PATCH /admin/courses/:courseId — Cập nhật
 
 Partial update: `name`, `description`, `thumbnailUrl`. `200` → chi tiết.
+Field không gửi thì giữ nguyên; gửi `null` cho `description` / `thumbnailUrl` để xoá giá trị;
+`name` không được `null`. Lesson đổi qua `PUT .../lessons`.
 
 ### PUT /admin/courses/:courseId/lessons — Gán danh sách lesson
 
@@ -440,16 +479,19 @@ Thay toàn bộ danh sách lesson của course (n-n; một lesson có thể thu�
 { "lessonIds": ["l2...", "l1...", "l5..."] }
 ```
 
-`200` → `lessons` mới. Không ảnh hưởng `user_lessons` (tiến độ được tính lại theo danh sách mới).
+Mảng rỗng = bỏ hết lesson. `200` → mảng lesson mới, cùng dạng `lessons` của API chi tiết.
+Lỗi: `404 COURSE_NOT_FOUND`, `404 LESSON_NOT_FOUND`, `422`.
+Không ảnh hưởng `user_lessons` (tiến độ được tính lại theo danh sách mới).
 
 ### DELETE /admin/courses/:courseId — Xoá
 
-Soft delete (`deleted_at`), course không còn hiện cho user. `204`.
+Soft delete (`deleted_at`), course không còn hiện cho user. `204`. Xoá lần nữa trả
+`404 COURSE_NOT_FOUND`.
 
 ### GET /admin/lessons — (hỗ trợ màn chọn lesson)
 
 Danh sách lesson rút gọn để chọn khi tạo/sửa course: `?keyword=&page=&limit=` →
-`{ id, title, wordCount, hasTest }`.
+`{ id, title, wordCount, hasTest }`, sắp xếp theo `title`. `keyword` tìm theo tên lesson (ILIKE).
 
 ---
 

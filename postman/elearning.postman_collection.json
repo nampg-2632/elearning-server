@@ -47,6 +47,26 @@
       "key": "currentUserId",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "courseId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "lessonId1",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "lessonId2",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "lessonId3",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -237,6 +257,281 @@
               "path": ["auth", "logout"]
             },
             "description": "Thu hồi token hiện tại (blacklist trên Redis tới khi hết hạn). Trả `204`.\n\nSau khi chạy, gọi lại `Me` sẽ nhận `401`. Script giữ nguyên `accessToken` để thử điều đó; login lại để lấy token mới."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin – Courses",
+      "description": "Admin quản lý khoá học (bước 3). Cần token admin: chạy `Auth / Login (admin)` trước; token user sẽ nhận `403 FORBIDDEN`.\n\nThứ tự gợi ý: `List lessons (picker)` (lưu `lessonId1..3`) → `Create course` (lưu `courseId`) → `Get` / `Update` / `Set lessons` → `Delete`.",
+      "item": [
+        {
+          "name": "List lessons (picker)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/lessons?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "lessons"],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "description": "Tên lesson chứa chuỗi này (ILIKE)",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Trang, bắt đầu từ 1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Tối đa 100"
+                }
+              ]
+            },
+            "description": "Danh sách lesson rút gọn cho màn chọn lesson: `{ id, title, wordCount, hasTest }`, sắp xếp theo tên.\n\nScript lưu 3 lesson đầu vào `lessonId1..3`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const items = pm.response.json().items || [];",
+                  "items.slice(0, 3).forEach((lesson, index) => {",
+                  "  pm.collectionVariables.set(`lessonId${index + 1}`, lesson.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List courses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/courses?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "courses"],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "description": "Tên khoá chứa chuỗi này (ILIKE)",
+                  "disabled": true
+                },
+                {
+                  "key": "studentName",
+                  "value": "",
+                  "description": "Có học viên pending/approved tên chứa chuỗi này",
+                  "disabled": true
+                },
+                {
+                  "key": "createdFrom",
+                  "value": "2026-10-01",
+                  "description": "Ngày tạo từ (ISO 8601)",
+                  "disabled": true
+                },
+                {
+                  "key": "createdTo",
+                  "value": "2026-10-31",
+                  "description": "Ngày tạo đến (ISO 8601, gồm cả ngày đó)",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "-createdAt",
+                  "description": "-createdAt (mặc định) | createdAt | name | -name",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Trang, bắt đầu từ 1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Tối đa 100"
+                }
+              ]
+            },
+            "description": "Danh sách khoá học kèm `lessonCount`, `studentCount` (đã duyệt), `pendingCount`, `createdBy`.\n\n`createdTo` chỉ có ngày thì tính hết ngày đó (UTC). Query sai trả `422 VALIDATION_FAILED`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create course",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/courses",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "courses"]
+            },
+            "description": "Tạo khoá học, trả chi tiết (`201`). `lessonIds` tuỳ chọn, thứ tự trong mảng = `position`.\n\nValidate: `name` 1–255; `thumbnailUrl` là URL (≤ 2048) hoặc `null`; `lessonIds` là UUID, không trùng.\n\nLỗi: `404 LESSON_NOT_FOUND`, `422 VALIDATION_FAILED`.\n\nScript lưu id khoá mới vào `courseId`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Khoá học thử nghiệm\",\n  \"description\": \"Tạo từ Postman\",\n  \"thumbnailUrl\": null,\n  \"lessonIds\": [\n    \"{{lessonId1}}\",\n    \"{{lessonId2}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('courseId', pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get course",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/courses/{{courseId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "courses", "{{courseId}}"]
+            },
+            "description": "Chi tiết khoá học kèm `lessons: [{ id, title, position, wordCount, hasTest }]` và thống kê học viên.\n\nLỗi: `404 COURSE_NOT_FOUND` (kể cả khoá đã xoá), `400 BAD_REQUEST` nếu id không phải UUID."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update course",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/courses/{{courseId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "courses", "{{courseId}}"]
+            },
+            "description": "Cập nhật một phần `name`, `description`, `thumbnailUrl`; trả chi tiết.\n\nGửi `null` cho `description` / `thumbnailUrl` để xoá giá trị; `name` không được `null`. Lesson đổi qua `Set lessons`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Khoá học thử nghiệm (đã sửa)\",\n  \"thumbnailUrl\": \"https://picsum.photos/400/240\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Set lessons",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/courses/{{courseId}}/lessons",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "courses", "{{courseId}}", "lessons"]
+            },
+            "description": "Thay toàn bộ danh sách lesson của khoá; thứ tự trong mảng = `position`. Mảng rỗng = bỏ hết lesson. Trả danh sách lesson mới.\n\nKhông ảnh hưởng `user_lessons`.\n\nLỗi: `404 COURSE_NOT_FOUND`, `404 LESSON_NOT_FOUND`, `422 VALIDATION_FAILED`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lessonIds\": [\n    \"{{lessonId3}}\",\n    \"{{lessonId1}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('positions follow the request order', () => {",
+                  "  const { lessonIds } = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));",
+                  "  pm.expect(pm.response.json().map((lesson) => lesson.id)).to.eql(lessonIds);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete course",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/courses/{{courseId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "courses", "{{courseId}}"]
+            },
+            "description": "Soft delete, trả `204`. Sau đó `Get course` trả `404 COURSE_NOT_FOUND`."
           },
           "event": [
             {

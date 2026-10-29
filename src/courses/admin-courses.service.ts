@@ -22,6 +22,7 @@ import {
 import { CreateCourseDto } from './dto/create-course.dto';
 import { ListAdminCoursesQueryDto } from './dto/list-admin-courses-query.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
+import { countCourseLessons } from './course-lesson-count.query';
 import { ADMIN_COURSE_SORT_ORDER } from './courses.constants';
 import { CourseLesson } from './entities/course-lesson.entity';
 import { Course } from './entities/course.entity';
@@ -229,16 +230,9 @@ export class AdminCoursesService {
       return stats;
     }
 
-    const manager = this.courses.manager;
-    const [lessonRows, enrollmentRows] = await Promise.all([
-      manager
-        .createQueryBuilder(CourseLesson, 'cl')
-        .select('cl.courseId', 'courseId')
-        .addSelect('COUNT(*)::int', 'lessonCount')
-        .where('cl.courseId IN (:...ids)', { ids })
-        .groupBy('cl.courseId')
-        .getRawMany<{ courseId: string; lessonCount: number }>(),
-      manager
+    const [lessonCounts, enrollmentRows] = await Promise.all([
+      countCourseLessons(this.courses.manager, ids),
+      this.courses.manager
         .createQueryBuilder(UserCourse, 'uc')
         .select('uc.courseId', 'courseId')
         .addSelect(
@@ -258,7 +252,7 @@ export class AdminCoursesService {
         .getRawMany<{ courseId: string } & Omit<CourseStats, 'lessonCount'>>(),
     ]);
 
-    for (const { courseId, lessonCount } of lessonRows) {
+    for (const [courseId, lessonCount] of lessonCounts) {
       stats.get(courseId)!.lessonCount = lessonCount;
     }
     for (const { courseId, ...counts } of enrollmentRows) {

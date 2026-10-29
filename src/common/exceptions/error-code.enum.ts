@@ -17,4 +17,9 @@ export enum ErrorCode {
   // Courses & lessons
   CourseNotFound = 'COURSE_NOT_FOUND',
   LessonNotFound = 'LESSON_NOT_FOUND',
+
+  // Enrollments
+  AlreadyEnrolled = 'ALREADY_ENROLLED',
+  UserCourseNotFound = 'USER_COURSE_NOT_FOUND',
+  InvalidEnrollmentStatus = 'INVALID_ENROLLMENT_STATUS',
 }

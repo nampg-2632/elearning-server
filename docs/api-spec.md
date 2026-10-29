@@ -131,7 +131,8 @@ Auth. `200` → object `user` như trên.
 
 ### GET /courses — Danh sách khoá học để chọn
 
-Auth. Query: `page`, `limit`, `keyword` (tìm theo tên).
+Auth. Query: `page`, `limit`, `keyword` (tìm theo tên, ILIKE, tối đa 255). Sắp xếp theo
+`createdAt` mới nhất trước. Course đã xoá không hiện.
 
 ```json
 // 200
@@ -155,13 +156,21 @@ Auth. Query: `page`, `limit`, `keyword` (tìm theo tên).
 
 ### GET /courses/:courseId — Chi tiết khoá học
 
-Auth. Như item ở trên + `progress` (chỉ khi `approved`, còn lại `null`).
-Lỗi: `404 COURSE_NOT_FOUND`.
+Auth. Như item ở trên + `progress` (chỉ khi `approved`, còn lại `null`):
+
+```json
+{ "progress": { "totalLessons": 3, "passedLessons": 1, "percent": 33.33 } }
+```
+
+`percent` làm tròn 2 chữ số; course không có lesson thì `0`.
+Lỗi: `400 BAD_REQUEST` (id không phải UUID), `404 COURSE_NOT_FOUND` (không tồn tại hoặc đã xoá).
 
 ### POST /courses/:courseId/enroll — Chọn (đăng ký) khoá học
 
 Auth. Tạo `user_courses` với `status = pending`, chờ admin duyệt.
-Nếu trước đó bị `rejected` → chuyển lại về `pending`.
+Nếu trước đó bị `rejected` → chuyển lại về `pending` (giữ `id`, `createdAt`; xoá `reviewed_by`,
+`reviewed_at`, `reject_reason`). Không có body. Nhiều request cùng lúc thì chỉ một request thành
+công, các request còn lại nhận `409`.
 
 ```json
 // 201
@@ -210,8 +219,9 @@ Auth, approved.
 ### GET /me/courses — Khoá học của tôi
 
 Auth. Query: `page`, `limit`, `status` (`pending|approved|rejected`).
-Item: thông tin course + `enrollment` + `progress` (`{ totalLessons, passedLessons, percent }`
-khi approved).
+Item: cùng dạng `GET /courses/:courseId` (thông tin course + `enrollment` + `progress` khi
+approved). Sắp xếp theo thời điểm đăng ký (`user_courses.created_at`) mới nhất trước. Course đã
+xoá không hiện.
 
 ---
 
@@ -503,7 +513,7 @@ Danh sách lesson rút gọn để chọn khi tạo/sửa course: `?keyword=&pag
 | --------------- | -------------------------------------- |
 | `status`        | `pending` \| `approved` \| `rejected`  |
 | `courseId`      |                                        |
-| `keyword`       | tên hoặc email học viên                |
+| `keyword`       | tên hoặc email học viên (ILIKE, ≤ 320) |
 | `sort`          | `-createdAt` (mặc định) \| `createdAt` |
 | `page`, `limit` |                                        |
 
@@ -530,6 +540,15 @@ Danh sách lesson rút gọn để chọn khi tạo/sửa course: `?keyword=&pag
 }
 ```
 
+- `reviewedBy` = `{ "id": "u0...", "fullName": "Admin" }` khi đã được duyệt / từ chối, `null` khi
+  chưa (kể cả sau khi user đăng ký lại).
+- `%` và `_` trong `keyword` được tìm như ký tự thường. Kết quả cùng `createdAt` xếp tiếp theo `id`.
+- Đăng ký thuộc course đã xoá không hiện.
+
+> Với `PATCH .../approve` và `.../reject`: id không phải UUID trả `400 BAD_REQUEST`; đăng ký
+> không tồn tại hoặc thuộc course đã xoá trả `404 USER_COURSE_NOT_FOUND`. Hai admin thao tác
+> cùng lúc thì người sau thấy trạng thái mới (thường nhận `409`).
+
 ### PATCH /admin/user-courses/:id/approve — Duyệt
 
 Chỉ từ `pending`. Set `status = approved`, `reviewed_by`, `reviewed_at`, xoá `reject_reason`.
@@ -541,7 +560,7 @@ Chỉ từ `pending`. Set `status = approved`, `reviewed_by`, `reviewed_at`, xo�
 { "reason": "Khoá học đã đủ học viên" }
 ```
 
-`reason` tuỳ chọn, ≤ 500. Áp dụng cho:
+`reason` tuỳ chọn, ≤ 500, được trim; chuỗi rỗng hoặc `null` lưu thành `null`. Áp dụng cho:
 
 - `pending` → `rejected`: từ chối đăng ký.
 - `approved` → `rejected`: **thu hồi** quyền học. User không còn truy cập được course

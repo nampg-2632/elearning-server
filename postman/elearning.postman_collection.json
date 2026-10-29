@@ -67,6 +67,11 @@
       "key": "lessonId3",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "userCourseId",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -540,6 +545,282 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Courses",
+      "description": "User xem khoá học, đăng ký và xem khoá học của mình (bước 4). Chạy `Auth / Login (user1)` trước.\n\nThứ tự gợi ý: `List courses` (lưu `courseId` của khoá user chưa đăng ký hoặc bị từ chối) → `Get course` → `Enroll course` (lưu `userCourseId`) → `My courses`. Sau đó sang `Admin – User courses` để duyệt.",
+      "item": [
+        {
+          "name": "List courses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["courses"],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "description": "Tên khoá chứa chuỗi này (ILIKE)",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Trang, bắt đầu từ 1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Tối đa 100"
+                }
+              ]
+            },
+            "description": "Danh sách khoá học (khoá đã xoá không hiện), mới tạo trước. Mỗi khoá kèm `lessonCount` và `enrollment` của user hiện tại (`{ id, status }`, `null` nếu chưa đăng ký).\n\nScript lưu vào `courseId` khoá đầu tiên user chưa đăng ký hoặc bị `rejected` (với user1 seed là `IELTS Academic Words`)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const items = pm.response.json().items || [];",
+                  "const target = items.find((course) => !course.enrollment || course.enrollment.status === 'rejected');",
+                  "if (target) {",
+                  "  pm.collectionVariables.set('courseId', target.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get course",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["courses", "{{courseId}}"]
+            },
+            "description": "Chi tiết khoá học, thêm `progress: { totalLessons, passedLessons, percent }` khi đăng ký đã `approved`, còn lại `null`.\n\nLỗi: `400 BAD_REQUEST` (id không phải UUID), `404 COURSE_NOT_FOUND` (không tồn tại hoặc đã xoá)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Enroll course",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/enroll",
+              "host": ["{{baseUrl}}"],
+              "path": ["courses", "{{courseId}}", "enroll"]
+            },
+            "description": "Gửi đăng ký, không có body. Trả `201 { id, courseId, status: 'pending', createdAt }`.\n\nĐang `rejected` thì chuyển lại `pending` (giữ `id`, xoá thông tin duyệt cũ).\n\nLỗi: `404 COURSE_NOT_FOUND`, `409 ALREADY_ENROLLED` (đang `pending` / `approved`, ví dụ chạy request này lần thứ hai).\n\nScript lưu id đăng ký vào `userCourseId`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('userCourseId', pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My courses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/courses?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["me", "courses"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "approved",
+                  "description": "pending | approved | rejected",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Trang, bắt đầu từ 1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Tối đa 100"
+                }
+              ]
+            },
+            "description": "Khoá học user đã đăng ký, đăng ký mới nhất trước. Item cùng dạng `Get course` (`enrollment` + `progress` khi `approved`). Khoá đã xoá không hiện.\n\n`status` sai giá trị trả `422 VALIDATION_FAILED`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin – User courses",
+      "description": "Admin duyệt / từ chối / thu hồi đăng ký khoá học (bước 4). Chạy `Auth / Login (admin)` trước; token user nhận `403 FORBIDDEN`.\n\nThứ tự gợi ý: `Courses / Enroll course` (bằng user, lưu `userCourseId`) → login admin → `List user courses` → `Approve` → `Reject / revoke` (thu hồi). Muốn thử đăng ký lại: login user và chạy lại `Enroll course`.\n\nKhông gửi mail ở Phase 1.",
+      "item": [
+        {
+          "name": "List user courses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/user-courses?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "user-courses"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending",
+                  "description": "pending | approved | rejected",
+                  "disabled": true
+                },
+                {
+                  "key": "courseId",
+                  "value": "{{courseId}}",
+                  "description": "Lọc theo khoá học",
+                  "disabled": true
+                },
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "description": "Tên hoặc email học viên chứa chuỗi này (ILIKE)",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "-createdAt",
+                  "description": "-createdAt (mặc định) | createdAt",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Trang, bắt đầu từ 1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Tối đa 100"
+                }
+              ]
+            },
+            "description": "Danh sách đăng ký kèm `user { id, fullName, email }`, `course { id, name }`, `reviewedBy` (`{ id, fullName }` hoặc `null`), `reviewedAt`, `rejectReason`. Đăng ký của khoá đã xoá không hiện.\n\n`%` và `_` trong `keyword` được tìm như ký tự thường. Query sai trả `422 VALIDATION_FAILED`.\n\nNếu `userCourseId` đang trống, script lưu đăng ký `pending` đầu tiên vào đó."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const pending = (pm.response.json().items || []).find((item) => item.status === 'pending');",
+                  "if (pending && !pm.collectionVariables.get('userCourseId')) {",
+                  "  pm.collectionVariables.set('userCourseId', pending.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approve",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/user-courses/{{userCourseId}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "user-courses", "{{userCourseId}}", "approve"]
+            },
+            "description": "Duyệt, chỉ từ `pending`. Set `status = approved`, `reviewedBy`, `reviewedAt`, xoá `rejectReason`. Trả `200` item.\n\nLỗi: `400 BAD_REQUEST` (id không phải UUID), `404 USER_COURSE_NOT_FOUND` (không tồn tại hoặc khoá đã xoá), `409 INVALID_ENROLLMENT_STATUS` (đang `approved` / `rejected`)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject / revoke",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/user-courses/{{userCourseId}}/reject",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "user-courses", "{{userCourseId}}", "reject"]
+            },
+            "description": "Từ `pending`: từ chối. Từ `approved`: thu hồi quyền học, tiến độ (`user_lessons`, `test_attempts`) giữ nguyên. Trả `200` item.\n\n`reason` tuỳ chọn, ≤ 500, được trim; chuỗi rỗng / `null` lưu thành `null`. Có thể bỏ trống body.\n\nLỗi: `404 USER_COURSE_NOT_FOUND`, `409 INVALID_ENROLLMENT_STATUS` (đã `rejected`), `422 VALIDATION_FAILED`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Khoá học đã đủ học viên\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
                 ]
               }
             }

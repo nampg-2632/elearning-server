@@ -74,7 +74,7 @@ Nguyên tắc:
 
 ## Bước 3 – Admin quản lý khoá học
 
-Đang review ở PR #2 (branch `feat/admin-courses`, commit `c896483`, `9ad1eec`).
+Đã merge vào `main` qua PR #2 (`7655041`, commit `c896483`, `9ad1eec`, `194f1bd`).
 
 - [x] `GET /admin/courses`: tìm theo tên khoá, tên học viên, khoảng ngày tạo; sắp xếp; phân trang.
       Ngày giờ phải có múi giờ; `createdTo` chỉ có ngày thì tính hết ngày đó (UTC).
@@ -88,13 +88,21 @@ Nguyên tắc:
 
 ## Bước 4 – Đăng ký khoá học, admin duyệt
 
-- [ ] User: `GET /courses`, `GET /courses/:id`, `POST /courses/:id/enroll`, `GET /me/courses`.
+Đang review ở PR #3 (branch `feat/enrollments`, commit `f962e1f`, `c857931`, `7116e25`).
+
+- [x] User: `GET /courses`, `GET /courses/:id`, `POST /courses/:id/enroll`, `GET /me/courses`.
       Bị `rejected` thì được đăng ký lại (về `pending`).
-- [ ] Admin: `GET /admin/user-courses`, `PATCH /admin/user-courses/:id/approve` (từ `pending`),
+- [x] Admin: `GET /admin/user-courses`, `PATCH /admin/user-courses/:id/approve` (từ `pending`),
       `PATCH /admin/user-courses/:id/reject` (từ `pending` hoặc `approved`, kèm `reason` tuỳ chọn).
-- [ ] Không gửi mail ở bước này.
-- [ ] Course đã soft delete không hiện ở `GET /courses`, `GET /me/courses` và
+- [x] Không gửi mail ở bước này.
+- [x] Course đã soft delete không hiện ở `GET /courses`, `GET /me/courses` và
       `GET /admin/user-courses`; enroll vào course đã xoá trả `404 COURSE_NOT_FOUND`.
+- [x] `progress` ở chi tiết course và `/me/courses` tính trực tiếp bằng query
+      (`ProgressService.summarize`), chưa cache; cache Redis làm ở bước 5.
+- [x] Request đồng thời: enroll dùng `INSERT ... ON CONFLICT DO NOTHING` + `UPDATE` có điều kiện;
+      approve/reject khoá dòng `user_courses` trong transaction.
+- [x] Kiểm tra: chạy thật trên local với dữ liệu seed (gồm enroll/approve gửi đồng thời) và
+      collection Postman (folder `Courses`, `Admin – User courses`); unit test hàm tính phần trăm.
 
 ## Bước 5 – Lesson và tiến độ
 

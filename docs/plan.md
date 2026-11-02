@@ -88,7 +88,7 @@ Nguyên tắc:
 
 ## Bước 4 – Đăng ký khoá học, admin duyệt
 
-Đang review ở PR #3 (branch `feat/enrollments`, commit `f962e1f`, `c857931`, `7116e25`).
+Đã merge vào `main` qua PR #3 (`0a1574d`, commit `f962e1f`, `c857931`, `7116e25`).
 
 - [x] User: `GET /courses`, `GET /courses/:id`, `POST /courses/:id/enroll`, `GET /me/courses`.
       Bị `rejected` thì được đăng ký lại (về `pending`).

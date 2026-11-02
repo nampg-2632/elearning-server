@@ -10,5 +10,8 @@
   "EMAIL_ALREADY_EXISTS": "Email đã được sử dụng",
   "INVALID_CREDENTIALS": "Email hoặc mật khẩu không đúng",
   "COURSE_NOT_FOUND": "Không tìm thấy khoá học",
-  "LESSON_NOT_FOUND": "Không tìm thấy bài học"
+  "LESSON_NOT_FOUND": "Không tìm thấy bài học",
+  "ALREADY_ENROLLED": "Bạn đã đăng ký khoá học này",
+  "USER_COURSE_NOT_FOUND": "Không tìm thấy đăng ký khoá học",
+  "INVALID_ENROLLMENT_STATUS": "Không thể thực hiện thao tác với trạng thái đăng ký hiện tại"
 }

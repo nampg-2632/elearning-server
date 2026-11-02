@@ -72,6 +72,16 @@
       "key": "userCourseId",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "approvedCourseId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "lessonId",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -693,6 +703,166 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Lessons & progress",
+      "description": "User xem lesson, chi tiết lesson và tiến độ trong khoá đã được duyệt (bước 5). Chạy `Auth / Login (user1)` trước.\n\nThứ tự gợi ý: `My approved courses` (lưu `approvedCourseId`) → `Course lessons` (lưu `lessonId`) → `Lesson detail` → `Course progress`. `Course lessons – not approved` dùng `courseId` (khoá user chưa được duyệt) để xem lỗi 403.\n\nSeed không tạo `user_lessons`, nên mọi lesson ban đầu là `todo`; trạng thái `doing/pass/fail` có sau khi làm bài test (bước 6).",
+      "item": [
+        {
+          "name": "My approved courses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/courses?status=approved&page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["me", "courses"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "approved",
+                  "description": "pending | approved | rejected"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Trang, bắt đầu từ 1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Tối đa 100"
+                }
+              ]
+            },
+            "description": "Lọc `GET /me/courses` theo `status=approved`.\n\nScript lưu vào `approvedCourseId` khoá đầu tiên (với user1 seed là `TOEIC 600 Vocabulary`)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const items = pm.response.json().items || [];",
+                  "if (items.length > 0) {",
+                  "  pm.collectionVariables.set('approvedCourseId', items[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Course lessons",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{approvedCourseId}}/lessons",
+              "host": ["{{baseUrl}}"],
+              "path": ["courses", "{{approvedCourseId}}", "lessons"]
+            },
+            "description": "Lesson của khoá theo `position`, không phân trang. Mỗi item: `id, title, position, wordCount, status, bestScore`.\n\n`status`: `todo | doing | pass | fail` của user hiện tại; chưa làm bài thì `todo`, `bestScore = null`.\n\nLỗi (theo thứ tự): `400 BAD_REQUEST` (id không phải UUID), `404 COURSE_NOT_FOUND` (không tồn tại hoặc đã xoá), `403 COURSE_NOT_APPROVED`.\n\nScript lưu lesson đầu tiên vào `lessonId`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const items = pm.response.json().items || [];",
+                  "if (items.length > 0) {",
+                  "  pm.collectionVariables.set('lessonId', items[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Course lessons – not approved",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/lessons",
+              "host": ["{{baseUrl}}"],
+              "path": ["courses", "{{courseId}}", "lessons"]
+            },
+            "description": "Dùng `courseId` là khoá user chưa đăng ký / đang `pending` / bị `rejected` (ví dụ sau khi chạy `Courses / List courses` và `Enroll course`). Mong đợi `403 COURSE_NOT_APPROVED`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('code COURSE_NOT_APPROVED', () => pm.expect(pm.response.json().code).to.eql('COURSE_NOT_APPROVED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lesson detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/lessons/{{lessonId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["lessons", "{{lessonId}}"]
+            },
+            "description": "Chi tiết lesson: `id, title, description, status, bestScore`, `words` (theo `position`) và `test: { id, questionCount, passScore, currentAttemptId }`.\n\n`currentAttemptId` là attempt đang `doing` (nếu có), không có thì `null`. Lesson chưa có test thì `test: null`.\n\nLỗi (theo thứ tự): `400 BAD_REQUEST`, `404 LESSON_NOT_FOUND`, `403 LESSON_NOT_ACCESSIBLE` (lesson không thuộc khoá nào user đã được duyệt; khoá đã xoá không tính). Ví dụ với user1 seed: lesson `Writing Emails` trả 403."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Course progress",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{approvedCourseId}}/progress",
+              "host": ["{{baseUrl}}"],
+              "path": ["courses", "{{approvedCourseId}}", "progress"]
+            },
+            "description": "Tiến độ trong khoá: `courseId, totalLessons, passedLessons, percent` (làm tròn 2 chữ số) và `lessons: { todo, doing, pass, fail }`. Lesson pass ở khoá khác cũng tính. Tính trực tiếp, không cache.\n\nLỗi: như `Course lessons`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('status counts add up to totalLessons', () => {",
+                  "  const body = pm.response.json();",
+                  "  const { todo, doing, pass, fail } = body.lessons;",
+                  "  pm.expect(todo + doing + pass + fail).to.eql(body.totalLessons);",
+                  "});"
                 ]
               }
             }

@@ -151,8 +151,8 @@ Mỗi user chỉ có tối đa 1 attempt `doing` cho mỗi test (partial unique 
 progress = số lesson trong course mà user có status = pass / tổng số lesson của course
 ```
 
-Tính bằng query (join `course_lessons` × `user_lessons`). Có thể cache trong Redis
-`progress:{userId}:{courseId}` và xoá cache khi user nộp bài.
+Tính trực tiếp bằng query (join `course_lessons` × `user_lessons`), Phase 1 không cache.
+Cache Redis `progress:{userId}:{courseId}` để sau (xem mục "Tạm hoãn" trong plan.md).
 
 ## Dữ liệu seed (dev)
 

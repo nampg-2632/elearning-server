@@ -31,6 +31,8 @@ Nguyên tắc:
 - [x] **Từ chối đăng ký:** từ chối được khi `pending` và **thu hồi được khi đã `approved`**.
       Bị thu hồi thì user mất quyền truy cập course (403), tiến độ `user_lessons` vẫn giữ nguyên.
 - [x] **Bài test:** không giới hạn thời gian, không xáo trộn thứ tự đáp án (giữ theo `position`).
+- [x] **Cache tiến độ:** Phase 1 không cache, tiến độ luôn tính trực tiếp bằng query. Cache Redis
+      chuyển sang mục "Để sau".
 
 `api-spec.md` và `database.md` đã được cập nhật theo các quyết định trên:
 
@@ -98,7 +100,7 @@ Nguyên tắc:
 - [x] Course đã soft delete không hiện ở `GET /courses`, `GET /me/courses` và
       `GET /admin/user-courses`; enroll vào course đã xoá trả `404 COURSE_NOT_FOUND`.
 - [x] `progress` ở chi tiết course và `/me/courses` tính trực tiếp bằng query
-      (`ProgressService.summarize`), chưa cache; cache Redis làm ở bước 5.
+      (`ProgressService.summarize`), không cache.
 - [x] Request đồng thời: enroll dùng `INSERT ... ON CONFLICT DO NOTHING` + `UPDATE` có điều kiện;
       approve/reject khoá dòng `user_courses` trong transaction.
 - [x] Kiểm tra: chạy thật trên local với dữ liệu seed (gồm enroll/approve gửi đồng thời) và
@@ -108,15 +110,14 @@ Nguyên tắc:
 
 - [ ] `GET /courses/:id/lessons`: kèm trạng thái `todo/doing/pass/fail` của user.
 - [ ] `GET /lessons/:id`: danh sách từ và thông tin bài test.
-- [ ] `GET /courses/:id/progress`: tiến độ khoá học, cache trên Redis.
+- [ ] `GET /courses/:id/progress`: tiến độ khoá học, tính trực tiếp bằng query (không cache).
 - [ ] Chỉ user đã được duyệt vào khoá mới truy cập được, ngược lại trả 403.
 
 ## Bước 6 – Làm bài test
 
 - [ ] `POST /lessons/:id/test/attempts`: bắt đầu làm bài, trả câu hỏi không kèm đáp án
       (thứ tự câu hỏi và đáp án theo `position`, không giới hạn thời gian).
-- [ ] `POST /test-attempts/:id/submit`: chấm điểm trong một transaction, cập nhật `user_lessons`,
-      xoá cache tiến độ.
+- [ ] `POST /test-attempts/:id/submit`: chấm điểm trong một transaction, cập nhật `user_lessons`.
 - [ ] `GET /test-attempts/:id`: kết quả kèm đáp án đúng.
 - [ ] Unit test phần chấm điểm: pass/fail, bỏ trống câu, nộp hai lần, đáp án không thuộc câu hỏi.
 
@@ -134,3 +135,6 @@ Tạm hoãn trong Phase 1:
 
 - Gửi mail khi approve/reject (mail module BullMQ + nodemailer, mẫu mail vi/en, chọn SMTP cho dev).
 - Giới hạn thời gian làm bài test, xáo trộn thứ tự đáp án.
+- Cache tiến độ trên Redis (`progress:{userId}:{courseId}`). Khi làm phải xoá cache khi user nộp
+  bài (mọi course chứa lesson đó), khi admin đổi danh sách lesson của course (mọi user của course)
+  hoặc đặt TTL ngắn.

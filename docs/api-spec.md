@@ -304,7 +304,6 @@ Xử lý (trong 1 transaction):
 3. Lưu `attempt_answers`, attempt → `submitted`.
 4. Cập nhật `user_lessons`: `pass` nếu passed (đã pass thì giữ `pass`), ngược lại `fail`;
    cập nhật `best_score`.
-5. Xoá cache progress của user.
 
 `200` → kết quả giống `GET /test-attempts/:id`.
 Lỗi: `404 ATTEMPT_NOT_FOUND`, `409 ATTEMPT_ALREADY_SUBMITTED`, `422 INVALID_ANSWER`.

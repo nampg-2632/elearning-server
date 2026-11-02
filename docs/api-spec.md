@@ -199,7 +199,10 @@ Auth, **user phải được `approved`** vào course (nếu không: `403 COURSE
 }
 ```
 
-`status`: `todo | doing | pass | fail` của user hiện tại. Không phân trang (sắp theo `position`).
+`status`: `todo | doing | pass | fail` của user hiện tại; chưa có bản ghi `user_lessons` thì
+`todo`, `bestScore = null`. Không phân trang (sắp theo `position`); course chưa có lesson → `items: []`.
+Lỗi (theo thứ tự kiểm tra): `400 BAD_REQUEST` (id không phải UUID), `404 COURSE_NOT_FOUND`
+(không tồn tại hoặc đã xoá), `403 COURSE_NOT_APPROVED` (chưa đăng ký, `pending` hoặc `rejected`).
 
 ### GET /courses/:courseId/progress — Tiến độ trong khoá học
 
@@ -215,6 +218,10 @@ Auth, approved.
   "lessons": { "todo": 5, "doing": 1, "pass": 5, "fail": 1 }
 }
 ```
+
+`percent` làm tròn 2 chữ số. `lessons.todo` gồm cả lesson chưa có bản ghi `user_lessons`.
+Course không có lesson → mọi số = `0`. Tính trực tiếp bằng query, không cache.
+Lỗi: như `GET /courses/:courseId/lessons`.
 
 ### GET /me/courses — Khoá học của tôi
 
@@ -250,7 +257,11 @@ xoá không hiện.
 }
 ```
 
-`currentAttemptId`: attempt đang `doing` (nếu có) để làm tiếp.
+`description` có thể `null`. `words` sắp theo `lesson_words.position`.
+`currentAttemptId`: attempt đang `doing` (nếu có) để làm tiếp, không có thì `null`.
+Lesson chưa có test → `"test": null` (các field khác giữ nguyên; `status` luôn `todo`).
+Lỗi (theo thứ tự kiểm tra): `400 BAD_REQUEST` (id không phải UUID), `404 LESSON_NOT_FOUND`,
+`403 LESSON_NOT_ACCESSIBLE` (không thuộc course nào user đã `approved`; course đã xoá không tính).
 
 ### POST /lessons/:lessonId/test/attempts — Bắt đầu làm bài
 

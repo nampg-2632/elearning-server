@@ -17,6 +17,8 @@ export enum ErrorCode {
   // Courses & lessons
   CourseNotFound = 'COURSE_NOT_FOUND',
   LessonNotFound = 'LESSON_NOT_FOUND',
+  CourseNotApproved = 'COURSE_NOT_APPROVED',
+  LessonNotAccessible = 'LESSON_NOT_ACCESSIBLE',
 
   // Enrollments
   AlreadyEnrolled = 'ALREADY_ENROLLED',

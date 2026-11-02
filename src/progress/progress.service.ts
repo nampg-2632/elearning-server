@@ -3,8 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CourseLesson } from '../courses/entities/course-lesson.entity';
 import { CourseProgressSummaryDto } from './dto/course-progress-summary.dto';
+import { CourseProgressDto } from './dto/course-progress.dto';
 import { UserLesson } from './entities/user-lesson.entity';
 import { LessonStatus } from './enums/lesson-status.enum';
+import { lessonStatusCounts } from './lesson-status-counts';
 import { progressPercent } from './progress-percent';
 
 @Injectable()
@@ -57,5 +59,41 @@ export class ProgressService {
       });
     }
     return summaries;
+  }
+
+  // Progress in one course with lesson counts per status. Computed on every
+  // call; a lesson passed in another course counts here too.
+  async getCourseProgress(
+    userId: string,
+    courseId: string,
+  ): Promise<CourseProgressDto> {
+    const rows = await this.userLessons.manager
+      .createQueryBuilder(CourseLesson, 'cl')
+      .innerJoin(
+        UserLesson,
+        'ul',
+        'ul.lessonId = cl.lessonId AND ul.userId = :userId',
+        { userId },
+      )
+      .select('ul.status', 'status')
+      .addSelect('COUNT(*)::int', 'count')
+      .where('cl.courseId = :courseId', { courseId })
+      .groupBy('ul.status')
+      .getRawMany<{ status: LessonStatus; count: number }>();
+    const totalLessons = await this.userLessons.manager.countBy(CourseLesson, {
+      courseId,
+    });
+
+    const lessons = lessonStatusCounts(
+      totalLessons,
+      Object.fromEntries(rows.map(({ status, count }) => [status, count])),
+    );
+    return {
+      courseId,
+      totalLessons,
+      passedLessons: lessons.pass,
+      percent: progressPercent(lessons.pass, totalLessons),
+      lessons,
+    };
   }
 }

@@ -9,6 +9,9 @@ import { EnrollmentDto } from '../enrollments/dto/enrollment.dto';
 import { EnrollmentsService } from '../enrollments/enrollments.service';
 import { UserCourse } from '../enrollments/entities/user-course.entity';
 import { EnrollmentStatus } from '../enrollments/enums/enrollment-status.enum';
+import { LessonsService } from '../lessons/lessons.service';
+import { CourseLessonDto } from '../lessons/dto/course-lesson.dto';
+import { CourseProgressDto } from '../progress/dto/course-progress.dto';
 import { ProgressService } from '../progress/progress.service';
 import type { User } from '../users/entities/user.entity';
 import { countCourseLessons } from './course-lesson-count.query';
@@ -24,6 +27,7 @@ export class CoursesService {
   constructor(
     @InjectRepository(Course) private readonly courses: Repository<Course>,
     private readonly enrollmentsService: EnrollmentsService,
+    private readonly lessonsService: LessonsService,
     private readonly progressService: ProgressService,
   ) {}
 
@@ -81,6 +85,16 @@ export class CoursesService {
     return this.enrollmentsService.enroll(user.id, id);
   }
 
+  async listLessons(user: User, id: string): Promise<CourseLessonDto[]> {
+    await this.assertApprovedCourse(user, id);
+    return this.lessonsService.listForCourse(user.id, id);
+  }
+
+  async getProgress(user: User, id: string): Promise<CourseProgressDto> {
+    await this.assertApprovedCourse(user, id);
+    return this.progressService.getCourseProgress(user.id, id);
+  }
+
   async listMine(
     user: User,
     query: ListMyCoursesQueryDto,
@@ -117,6 +131,12 @@ export class CoursesService {
       progress: progress.get(uc.courseId) ?? null,
     }));
     return paginate(items, total, query);
+  }
+
+  // 404 for a missing or deleted course first, then 403 unless approved.
+  private async assertApprovedCourse(user: User, id: string): Promise<void> {
+    await this.findCourse(id);
+    await this.enrollmentsService.assertApproved(user.id, id);
   }
 
   private async findCourse(id: string): Promise<Course> {

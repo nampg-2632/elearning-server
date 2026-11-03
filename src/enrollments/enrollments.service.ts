@@ -59,6 +59,23 @@ export class EnrollmentsService {
     };
   }
 
+  // Throws COURSE_NOT_APPROVED unless the user's enrollment is approved.
+  // The caller checks that the course exists.
+  async assertApproved(userId: string, courseId: string): Promise<void> {
+    const approved = await this.userCourses.existsBy({
+      userId,
+      courseId,
+      status: EnrollmentStatus.Approved,
+    });
+    if (!approved) {
+      throw new AppException({
+        code: ErrorCode.CourseNotApproved,
+        messageKey: 'errors.COURSE_NOT_APPROVED',
+        status: HttpStatus.FORBIDDEN,
+      });
+    }
+  }
+
   // The user's enrollment for each course id that has one.
   async findForCourses(
     userId: string,

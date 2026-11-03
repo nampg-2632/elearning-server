@@ -11,6 +11,8 @@
   "INVALID_CREDENTIALS": "Invalid email or password",
   "COURSE_NOT_FOUND": "Course not found",
   "LESSON_NOT_FOUND": "Lesson not found",
+  "COURSE_NOT_APPROVED": "Your enrollment in this course has not been approved",
+  "LESSON_NOT_ACCESSIBLE": "You do not have access to this lesson",
   "ALREADY_ENROLLED": "You have already enrolled in this course",
   "USER_COURSE_NOT_FOUND": "Enrollment not found",
   "INVALID_ENROLLMENT_STATUS": "This action is not allowed for the current enrollment status"

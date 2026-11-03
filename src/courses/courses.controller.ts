@@ -16,6 +16,8 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Paginated } from '../common/dto/paginated-response';
 import { SWAGGER_BEARER_AUTH } from '../config/swagger';
 import { EnrollmentDto } from '../enrollments/dto/enrollment.dto';
+import { CourseLessonListDto } from '../lessons/dto/course-lesson.dto';
+import { CourseProgressDto } from '../progress/dto/course-progress.dto';
 import { User } from '../users/entities/user.entity';
 import { CoursesService } from './courses.service';
 import { CourseDetailDto, CourseDto, CoursePageDto } from './dto/course.dto';
@@ -53,5 +55,24 @@ export class CoursesController {
     @CurrentUser() user: User,
   ): Promise<EnrollmentDto> {
     return this.coursesService.enroll(user, courseId);
+  }
+
+  // Ordered lessons with the user's status; requires an approved enrollment.
+  @Get(':courseId/lessons')
+  @ApiOkResponse({ type: CourseLessonListDto })
+  async listLessons(
+    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @CurrentUser() user: User,
+  ): Promise<CourseLessonListDto> {
+    return { items: await this.coursesService.listLessons(user, courseId) };
+  }
+
+  @Get(':courseId/progress')
+  @ApiOkResponse({ type: CourseProgressDto })
+  getProgress(
+    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @CurrentUser() user: User,
+  ): Promise<CourseProgressDto> {
+    return this.coursesService.getProgress(user, courseId);
   }
 }

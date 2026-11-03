@@ -108,10 +108,20 @@ Nguyên tắc:
 
 ## Bước 5 – Lesson và tiến độ
 
-- [ ] `GET /courses/:id/lessons`: kèm trạng thái `todo/doing/pass/fail` của user.
-- [ ] `GET /lessons/:id`: danh sách từ và thông tin bài test.
-- [ ] `GET /courses/:id/progress`: tiến độ khoá học, tính trực tiếp bằng query (không cache).
-- [ ] Chỉ user đã được duyệt vào khoá mới truy cập được, ngược lại trả 403.
+Đã merge vào `main` qua PR #4 (`aed18cc`, commit `fb870e9`, `00218f1`).
+
+- [x] `GET /courses/:id/lessons`: lesson theo `position`, kèm `wordCount`, trạng thái
+      `todo/doing/pass/fail` và `bestScore` của user (chưa có `user_lessons` thì `todo`).
+- [x] `GET /lessons/:id`: danh sách từ theo `position` và thông tin bài test
+      (`questionCount`, `passScore`, `currentAttemptId`); lesson chưa có test thì `test: null`.
+- [x] `GET /courses/:id/progress`: tiến độ khoá học kèm số lesson theo trạng thái, tính trực tiếp
+      bằng một query (không cache).
+- [x] Chỉ user đã được duyệt vào khoá mới truy cập được: course trả `403 COURSE_NOT_APPROVED`,
+      lesson trả `403 LESSON_NOT_ACCESSIBLE` (lesson phải thuộc ít nhất một khoá chưa xoá mà user
+      đã `approved`). Thứ tự lỗi `400` → `404` → `403`.
+- [x] Kiểm tra: chạy thật trên local với dữ liệu seed và `user_lessons` / `test_attempts` chèn tạm
+      (đủ trạng thái, lesson thuộc 2 khoá, khoá đã xoá, lesson chưa có test, thu hồi rồi duyệt
+      lại) và collection Postman (folder `Lessons & progress`); unit test hàm đếm trạng thái.
 
 ## Bước 6 – Làm bài test
 

@@ -113,9 +113,11 @@ describe('AllExceptionsFilter', () => {
     const errors: ValidationError[] = [
       {
         property: 'answers',
+        constraints: {},
         children: [
           {
             property: '0',
+            constraints: {},
             children: [
               {
                 property: 'optionId',

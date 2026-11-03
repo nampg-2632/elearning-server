@@ -69,21 +69,23 @@ function collectFieldErrors(
     const field = parentPath
       ? `${parentPath}.${error.property}`
       : error.property;
-    const own: FieldError[] = error.constraints
-      ? [
-          {
-            field,
-            messages: Object.entries(error.constraints).map(
-              ([constraint, message]) =>
+    // I18nValidationPipe gives parents of nested errors `constraints: {}`.
+    const constraints = Object.entries(error.constraints ?? {});
+    const own: FieldError[] =
+      constraints.length > 0
+        ? [
+            {
+              field,
+              messages: constraints.map(([constraint, message]) =>
                 constraint === WHITELIST_CONSTRAINT
                   ? t('validation.PROPERTY_NOT_ALLOWED', {
                       property: error.property,
                     })
                   : translateConstraint(message, error.property, t),
-            ),
-          },
-        ]
-      : [];
+              ),
+            },
+          ]
+        : [];
 
     return [...own, ...collectFieldErrors(error.children ?? [], t, field)];
   });

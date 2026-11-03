@@ -125,11 +125,26 @@ Nguyên tắc:
 
 ## Bước 6 – Làm bài test
 
-- [ ] `POST /lessons/:id/test/attempts`: bắt đầu làm bài, trả câu hỏi không kèm đáp án
-      (thứ tự câu hỏi và đáp án theo `position`, không giới hạn thời gian).
-- [ ] `POST /test-attempts/:id/submit`: chấm điểm trong một transaction, cập nhật `user_lessons`.
-- [ ] `GET /test-attempts/:id`: kết quả kèm đáp án đúng.
-- [ ] Unit test phần chấm điểm: pass/fail, bỏ trống câu, nộp hai lần, đáp án không thuộc câu hỏi.
+Đang review qua PR #5 (commit `e1c73e6`, `3843636`).
+
+- [x] `POST /lessons/:id/test/attempts`: bắt đầu làm bài, trả câu hỏi không kèm đáp án
+      (thứ tự câu hỏi và đáp án theo `position`, không giới hạn thời gian). Đã có attempt `doing`
+      thì trả lại (`200`), tạo mới thì `201`; request đồng thời chỉ tạo 1 attempt
+      (`INSERT ... ON CONFLICT DO NOTHING` trên partial unique index).
+- [x] `POST /test-attempts/:id/submit`: chấm điểm trong một transaction có khoá dòng attempt,
+      cập nhật `user_lessons` (đã `pass` thì giữ `pass`, `best_score` lấy điểm cao nhất).
+- [x] `GET /test-attempts/:id`: kết quả kèm đáp án đúng; còn `doing` thì trả câu hỏi như lúc
+      bắt đầu.
+- [x] Cả 3 API yêu cầu lesson truy cập được (`403 LESSON_NOT_ACCESSIBLE`); attempt của user
+      khác trả `404 ATTEMPT_NOT_FOUND`.
+- [x] Sửa format lỗi validation lồng nhau: không trả mục cha (`answers`, `answers.0`) có
+      `messages` rỗng.
+- [x] Unit test phần chấm điểm: pass/fail, bỏ trống câu, nộp hai lần, đáp án không thuộc câu hỏi
+      (`gradeAttempt`, `lessonAfterAttempt`, `TestAttemptsService.submit`).
+- [x] Kiểm tra: chạy thật trên local với dữ liệu seed (start đồng thời, submit đồng thời, làm lại
+      sau pass/fail, bỏ trống hết, lesson chưa có test, thu hồi rồi duyệt lại) và collection
+      Postman (folder `Tests`).
+- Không làm `GET /lessons/:id/test/attempts` (lịch sử làm bài, tuỳ chọn trong spec).
 
 ## Bước 7 – Danh sách từ
 

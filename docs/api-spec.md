@@ -265,16 +265,22 @@ Lỗi (theo thứ tự kiểm tra): `400 BAD_REQUEST` (id không phải UUID), `
 
 ### POST /lessons/:lessonId/test/attempts — Bắt đầu làm bài
 
-Tạo attempt `doing`; `user_lessons.status` → `doing`. Nếu đã có attempt `doing` thì trả lại
-attempt đó (idempotent, `200`), còn tạo mới thì `201`.
+Tạo attempt `doing` (`201`). Nếu user đã có attempt `doing` cho test này thì trả lại attempt đó
+(`200`), không tạo thêm. Mỗi user chỉ có tối đa 1 attempt `doing` mỗi test (partial unique
+index); nhiều request gửi cùng lúc chỉ tạo 1 attempt, các request còn lại nhận `200`.
+
+Khi tạo attempt mới, `user_lessons.status`: chưa có bản ghi / `todo` / `fail` → `doing`;
+`pass` giữ nguyên `pass` (làm lại để ôn không làm giảm tiến độ).
+
 Câu hỏi và đáp án **không kèm** `isCorrect`. Câu hỏi và đáp án sắp theo `position` (không xáo
 trộn). Không giới hạn thời gian làm bài.
 
 ```json
-// 201
+// 201 (attempt mới) hoặc 200 (attempt đang làm dở)
 {
   "id": "a1...",
   "testId": "t1...",
+  "lessonId": "l1...",
   "status": "doing",
   "startedAt": "2026-10-21T03:10:00.000Z",
   "questions": [
@@ -292,11 +298,13 @@ trộn). Không giới hạn thời gian làm bài.
 }
 ```
 
-Lỗi: `404 TEST_NOT_FOUND` (lesson chưa có test).
+Lỗi (theo thứ tự kiểm tra): `400 BAD_REQUEST` (id không phải UUID), `404 LESSON_NOT_FOUND`,
+`403 LESSON_NOT_ACCESSIBLE`, `404 TEST_NOT_FOUND` (lesson chưa có test).
 
 ### POST /test-attempts/:attemptId/submit — Nộp bài
 
-Chỉ chủ attempt, attempt phải `doing`. Câu không gửi = bỏ trống (tính sai).
+Chỉ chủ attempt, attempt phải `doing`. Câu không gửi = bỏ trống (tính sai). `answers: []` là
+bỏ trống tất cả (0 điểm).
 
 ```json
 // Request
@@ -308,16 +316,26 @@ Chỉ chủ attempt, attempt phải `doing`. Câu không gửi = bỏ trống (t
 }
 ```
 
-Xử lý (trong 1 transaction):
+Validate: `answers` là mảng (bắt buộc, được rỗng); `questionId`, `optionId` là UUID; không gửi
+trùng `questionId` (`422 VALIDATION_FAILED`).
 
-1. Kiểm tra `questionId` thuộc test, `optionId` thuộc câu hỏi (`422 INVALID_ANSWER`).
-2. Chấm điểm `score = round(correct / total * 100)`; `passed = score >= passScore`.
-3. Lưu `attempt_answers`, attempt → `submitted`.
-4. Cập nhật `user_lessons`: `pass` nếu passed (đã pass thì giữ `pass`), ngược lại `fail`;
-   cập nhật `best_score`.
+Xử lý (trong 1 transaction, khoá dòng attempt):
+
+1. Attempt phải còn `doing` (`409 ATTEMPT_ALREADY_SUBMITTED`). Hai request nộp cùng lúc: một
+   request `200`, request kia `409`.
+2. Kiểm tra `questionId` thuộc test, `optionId` thuộc câu hỏi (`422 INVALID_ANSWER`). Có một
+   câu sai là từ chối cả bài, attempt vẫn `doing`.
+3. Chấm điểm `score = round(correct / total * 100)`; `passed = score >= passScore`. Test không
+   có câu hỏi → `score = 0`.
+4. Lưu `attempt_answers` cho **mọi** câu (bỏ trống → `selected_option_id = null`), attempt →
+   `submitted`.
+5. Cập nhật `user_lessons`: `pass` nếu passed (đã pass thì giữ `pass`), ngược lại `fail`;
+   `best_score` = điểm cao nhất; `passed_at` = thời điểm pass lần đầu.
 
 `200` → kết quả giống `GET /test-attempts/:id`.
-Lỗi: `404 ATTEMPT_NOT_FOUND`, `409 ATTEMPT_ALREADY_SUBMITTED`, `422 INVALID_ANSWER`.
+Lỗi (theo thứ tự): `400 BAD_REQUEST` (id không phải UUID), `422 VALIDATION_FAILED` (body),
+`404 ATTEMPT_NOT_FOUND` (không tồn tại hoặc của user khác), `403 LESSON_NOT_ACCESSIBLE`,
+`409 ATTEMPT_ALREADY_SUBMITTED`, `422 INVALID_ANSWER`.
 
 ### GET /test-attempts/:attemptId — Xem kết quả & đáp án đúng
 
@@ -328,14 +346,15 @@ Khi `submitted`:
 // 200
 {
   "id": "a1...",
+  "testId": "t1...",
   "lessonId": "l1...",
   "status": "submitted",
+  "startedAt": "…",
   "score": 90,
   "passScore": 80,
   "passed": true,
   "correctCount": 9,
   "totalQuestions": 10,
-  "startedAt": "…",
   "submittedAt": "…",
   "questions": [
     {
@@ -353,9 +372,17 @@ Khi `submitted`:
 }
 ```
 
+`selectedOptionId = null` là câu bỏ trống.
+Lỗi (theo thứ tự): `400 BAD_REQUEST`, `404 ATTEMPT_NOT_FOUND` (không tồn tại hoặc của user
+khác), `403 LESSON_NOT_ACCESSIBLE`.
+
+> Điều kiện truy cập áp dụng cho cả 3 API trên: bị thu hồi course thì không bắt đầu / nộp / xem
+> được attempt (`403`), attempt và `user_lessons` vẫn giữ nguyên; được duyệt lại thì dùng tiếp.
+
 ### GET /lessons/:lessonId/test/attempts — Lịch sử làm bài (tuỳ chọn)
 
 Danh sách attempt của user cho lesson: `id, status, score, passed, submittedAt`.
+**Chưa làm trong Phase 1** (không có trong plan).
 
 ---
 

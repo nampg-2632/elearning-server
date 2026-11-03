@@ -136,6 +136,12 @@ Chuyển trạng thái:
 Không có bản ghi = `todo`. Vì lesson có thể thuộc nhiều course, pass lesson ở course A
 cũng tính là pass ở course B.
 
+Chuyển trạng thái (do API làm bài test cập nhật):
+
+- Bắt đầu attempt mới: chưa có bản ghi / `todo` / `fail` → `doing`; `pass` giữ nguyên.
+- Nộp bài: đạt → `pass`; không đạt → `fail`, trừ khi đã `pass` thì giữ `pass`.
+  `best_score` giữ điểm cao nhất, `passed_at` giữ thời điểm pass lần đầu.
+
 ### test_attempts / attempt_answers
 
 `test_attempts`: `id`, `user_id`, `test_id`, `status` (`doing` \| `submitted`), `score`
@@ -143,7 +149,7 @@ cũng tính là pass ở course B.
 Mỗi user chỉ có tối đa 1 attempt `doing` cho mỗi test (partial unique index).
 
 `attempt_answers`: `attempt_id`, `question_id`, `selected_option_id` (null = bỏ trống),
-`is_correct`. PK (attempt_id, question_id).
+`is_correct`. PK (attempt_id, question_id). Khi nộp bài, mỗi câu của test có đúng 1 dòng (kể cả câu bỏ trống).
 
 ## Tiến độ khoá học
 

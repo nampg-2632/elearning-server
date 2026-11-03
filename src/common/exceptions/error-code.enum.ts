@@ -24,4 +24,10 @@ export enum ErrorCode {
   AlreadyEnrolled = 'ALREADY_ENROLLED',
   UserCourseNotFound = 'USER_COURSE_NOT_FOUND',
   InvalidEnrollmentStatus = 'INVALID_ENROLLMENT_STATUS',
+
+  // Tests
+  TestNotFound = 'TEST_NOT_FOUND',
+  AttemptNotFound = 'ATTEMPT_NOT_FOUND',
+  AttemptAlreadySubmitted = 'ATTEMPT_ALREADY_SUBMITTED',
+  InvalidAnswer = 'INVALID_ANSWER',
 }

@@ -139,10 +139,7 @@ export class LessonsService {
 
   // A lesson is accessible through any course it belongs to where the
   // user is approved. Soft-deleted courses are excluded on the join.
-  private async assertAccessible(
-    userId: string,
-    lessonId: string,
-  ): Promise<void> {
+  async assertAccessible(userId: string, lessonId: string): Promise<void> {
     const accessible = await this.lessons.manager
       .createQueryBuilder(CourseLesson, 'cl')
       .innerJoin('cl.course', 'course')

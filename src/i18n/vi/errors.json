@@ -15,5 +15,9 @@
   "LESSON_NOT_ACCESSIBLE": "Bạn không có quyền truy cập bài học này",
   "ALREADY_ENROLLED": "Bạn đã đăng ký khoá học này",
   "USER_COURSE_NOT_FOUND": "Không tìm thấy đăng ký khoá học",
-  "INVALID_ENROLLMENT_STATUS": "Không thể thực hiện thao tác với trạng thái đăng ký hiện tại"
+  "INVALID_ENROLLMENT_STATUS": "Không thể thực hiện thao tác với trạng thái đăng ký hiện tại",
+  "TEST_NOT_FOUND": "Bài học này chưa có bài test",
+  "ATTEMPT_NOT_FOUND": "Không tìm thấy lượt làm bài",
+  "ATTEMPT_ALREADY_SUBMITTED": "Lượt làm bài này đã được nộp",
+  "INVALID_ANSWER": "Câu trả lời không thuộc bài test này"
 }

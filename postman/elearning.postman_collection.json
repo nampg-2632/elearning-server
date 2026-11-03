@@ -82,6 +82,26 @@
       "key": "lessonId",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "attemptId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "answers",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "invalidAnswers",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "duplicateAnswers",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -712,7 +732,7 @@
     },
     {
       "name": "Lessons & progress",
-      "description": "User xem lesson, chi tiết lesson và tiến độ trong khoá đã được duyệt (bước 5). Chạy `Auth / Login (user1)` trước.\n\nThứ tự gợi ý: `My approved courses` (lưu `approvedCourseId`) → `Course lessons` (lưu `lessonId`) → `Lesson detail` → `Course progress`. `Course lessons – not approved` dùng `courseId` (khoá user chưa được duyệt) để xem lỗi 403.\n\nSeed không tạo `user_lessons`, nên mọi lesson ban đầu là `todo`; trạng thái `doing/pass/fail` có sau khi làm bài test (bước 6).",
+      "description": "User xem lesson, chi tiết lesson và tiến độ trong khoá đã được duyệt (bước 5). Chạy `Auth / Login (user1)` trước.\n\nThứ tự gợi ý: `My approved courses` (lưu `approvedCourseId`) → `Course lessons` (lưu `lessonId`) → `Lesson detail` → `Course progress`. `Course lessons – not approved` dùng `courseId` (khoá user chưa được duyệt) để xem lỗi 403.\n\nSeed không tạo `user_lessons`, nên mọi lesson ban đầu là `todo`; trạng thái `doing/pass/fail` có sau khi làm bài test (folder `Tests`).",
       "item": [
         {
           "name": "My approved courses",
@@ -863,6 +883,311 @@
                   "  const { todo, doing, pass, fail } = body.lessons;",
                   "  pm.expect(todo + doing + pass + fail).to.eql(body.totalLessons);",
                   "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tests",
+      "description": "User làm bài test của lesson (bước 6). Chạy `Auth / Login (user1)` rồi `Lessons & progress / My approved courses` → `Course lessons` (lưu `lessonId`) trước.\n\nThứ tự gợi ý (chạy cả folder bằng Runner cũng được): `Start attempt` → `Resume attempt` → `Get attempt (doing)` → `Submit – invalid answer` → `Submit – duplicate question` → `Submit` → `Submit again` → `Get attempt result`.\n\nSau khi nộp, xem lại `Lessons & progress / Lesson detail` và `Course progress`: lesson thành `pass` / `fail`, `bestScore` cập nhật. Chạy lại `Start attempt` để làm lại (attempt mới, `201`).",
+      "item": [
+        {
+          "name": "Start attempt",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/lessons/{{lessonId}}/test/attempts",
+              "host": ["{{baseUrl}}"],
+              "path": ["lessons", "{{lessonId}}", "test", "attempts"]
+            },
+            "description": "Bắt đầu làm bài test của `lessonId` (lưu từ `Lessons & progress / Course lessons`). Tạo attempt `doing` → `201`; đã có attempt `doing` thì trả lại attempt đó → `200`.\n\nResponse: `id, testId, lessonId, status, startedAt, questions[{ id, content, options[{ id, content }] }]`, **không** kèm đáp án đúng, theo `position`. `user_lessons` của lesson chuyển `doing` (đã `pass` thì giữ `pass`).\n\nScript lưu `attemptId` và dựng sẵn 3 body cho các request `Submit ...`:\n- `answers`: đúng mọi câu trừ câu cuối bỏ trống (seed 6 câu → 5/6 = 83 điểm, pass với `passScore` 80). Dựa theo quy tắc seed: đáp án đúng của câu thứ i (đếm từ 0) nằm ở vị trí `i % 4`.\n- `invalidAnswers`: câu 1 chọn đáp án của câu 2 → `422 INVALID_ANSWER`.\n- `duplicateAnswers`: gửi câu 1 hai lần → `422 VALIDATION_FAILED`.\n\nLỗi (theo thứ tự): `400 BAD_REQUEST`, `404 LESSON_NOT_FOUND`, `403 LESSON_NOT_ACCESSIBLE`, `404 TEST_NOT_FOUND`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201 or 200', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('status doing', () => pm.expect(body.status).to.eql('doing'));",
+                  "pm.test('correct answers are hidden', () => pm.expect(pm.response.text()).to.not.include('isCorrect'));",
+                  "",
+                  "pm.collectionVariables.set('attemptId', body.id);",
+                  "const questions = body.questions || [];",
+                  "// Seed rule: question i has its correct option at index i % 4.",
+                  "const answers = questions.slice(0, -1).map((q, i) => ({",
+                  "  questionId: q.id,",
+                  "  optionId: q.options[i % q.options.length].id,",
+                  "}));",
+                  "pm.collectionVariables.set('answers', JSON.stringify(answers));",
+                  "if (questions.length >= 2) {",
+                  "  pm.collectionVariables.set('invalidAnswers', JSON.stringify([",
+                  "    { questionId: questions[0].id, optionId: questions[1].options[0].id },",
+                  "  ]));",
+                  "  const first = { questionId: questions[0].id, optionId: questions[0].options[0].id };",
+                  "  pm.collectionVariables.set('duplicateAnswers', JSON.stringify([first, first]));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resume attempt",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/lessons/{{lessonId}}/test/attempts",
+              "host": ["{{baseUrl}}"],
+              "path": ["lessons", "{{lessonId}}", "test", "attempts"]
+            },
+            "description": "Gọi lại `Start attempt` khi chưa nộp: không tạo attempt mới, trả `200` với đúng `attemptId` cũ (bấm nhiều lần / mở nhiều tab vẫn chỉ có 1 attempt `doing`)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('same attempt', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('attemptId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get attempt (doing)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/test-attempts/{{attemptId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["test-attempts", "{{attemptId}}"]
+            },
+            "description": "Attempt còn `doing`: trả câu hỏi như lúc bắt đầu, không có điểm và đáp án đúng.\n\nLỗi: `400 BAD_REQUEST`, `404 ATTEMPT_NOT_FOUND` (không tồn tại hoặc của user khác), `403 LESSON_NOT_ACCESSIBLE`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('still doing, no result', () => {",
+                  "  pm.expect(body.status).to.eql('doing');",
+                  "  pm.expect(body).to.not.have.property('score');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit – invalid answer",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/test-attempts/{{attemptId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["test-attempts", "{{attemptId}}", "submit"]
+            },
+            "description": "Câu hỏi chọn đáp án của câu khác → `422 INVALID_ANSWER`. Cả bài bị từ chối, attempt vẫn `doing` nên nộp lại được.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": {{invalidAnswers}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));",
+                  "pm.test('code INVALID_ANSWER', () => pm.expect(pm.response.json().code).to.eql('INVALID_ANSWER'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit – duplicate question",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/test-attempts/{{attemptId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["test-attempts", "{{attemptId}}", "submit"]
+            },
+            "description": "Gửi trùng `questionId` → `422 VALIDATION_FAILED`, `errors[0].field = answers`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": {{duplicateAnswers}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));",
+                  "pm.test('code VALIDATION_FAILED', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/test-attempts/{{attemptId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["test-attempts", "{{attemptId}}", "submit"]
+            },
+            "description": "Nộp bài. Body `{ answers: [{ questionId, optionId }] }`; câu không gửi = bỏ trống (tính sai), `answers: []` là bỏ trống hết. Mặc định dùng biến `answers` do `Start attempt` dựng (5/6 đúng → 83 điểm, pass). Muốn thử fail thì thay body bằng `{ \"answers\": [] }`.\n\nChấm `score = round(đúng / tổng * 100)`, `passed = score >= passScore`. Cập nhật `user_lessons`: đạt → `pass`; không đạt → `fail` (đã `pass` thì giữ `pass`); `bestScore` lấy điểm cao nhất.\n\n`200` → kết quả giống `Get attempt result`.\n\nLỗi (theo thứ tự): `400`, `422 VALIDATION_FAILED`, `404 ATTEMPT_NOT_FOUND`, `403 LESSON_NOT_ACCESSIBLE`, `409 ATTEMPT_ALREADY_SUBMITTED`, `422 INVALID_ANSWER`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": {{answers}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('submitted with a score', () => {",
+                  "  pm.expect(body.status).to.eql('submitted');",
+                  "  pm.expect(body.score).to.be.within(0, 100);",
+                  "  pm.expect(body.passed).to.eql(body.score >= body.passScore);",
+                  "});",
+                  "pm.test('one result per question', () => pm.expect(body.questions.length).to.eql(body.totalQuestions));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit again",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/test-attempts/{{attemptId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["test-attempts", "{{attemptId}}", "submit"]
+            },
+            "description": "Nộp lại attempt đã nộp → `409 ATTEMPT_ALREADY_SUBMITTED`. Muốn làm lại thì chạy `Start attempt` để tạo attempt mới.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));",
+                  "pm.test('code ATTEMPT_ALREADY_SUBMITTED', () => pm.expect(pm.response.json().code).to.eql('ATTEMPT_ALREADY_SUBMITTED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get attempt result",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/test-attempts/{{attemptId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["test-attempts", "{{attemptId}}"]
+            },
+            "description": "Attempt đã nộp: `score, passScore, passed, correctCount, totalQuestions, submittedAt` và mỗi câu có `selectedOptionId` (`null` = bỏ trống), `correctOptionId`, `isCorrect`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('result with correct answers', () => {",
+                  "  pm.expect(body.status).to.eql('submitted');",
+                  "  body.questions.forEach((q) => pm.expect(q).to.have.property('correctOptionId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Start attempt – lesson not found",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/lessons/00000000-0000-4000-8000-000000000000/test/attempts",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "lessons",
+                "00000000-0000-4000-8000-000000000000",
+                "test",
+                "attempts"
+              ]
+            },
+            "description": "Lesson không tồn tại → `404 LESSON_NOT_FOUND`. Đổi id thành chuỗi không phải UUID để xem `400`; dùng lesson không thuộc khoá đã duyệt (ví dụ `Writing Emails` với user1 seed) để xem `403 LESSON_NOT_ACCESSIBLE`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('code LESSON_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('LESSON_NOT_FOUND'));"
                 ]
               }
             }

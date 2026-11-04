@@ -125,7 +125,7 @@ Nguyên tắc:
 
 ## Bước 6 – Làm bài test
 
-Đang review qua PR #5 (commit `e1c73e6`, `3843636`).
+Đã merge vào `main` qua PR #5 (`ff3a954`, commit `e1c73e6`, `3843636`).
 
 - [x] `POST /lessons/:id/test/attempts`: bắt đầu làm bài, trả câu hỏi không kèm đáp án
       (thứ tự câu hỏi và đáp án theo `position`, không giới hạn thời gian). Đã có attempt `doing`

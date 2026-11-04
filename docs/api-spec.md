@@ -392,16 +392,25 @@ Danh sách attempt của user cho lesson: `id, status, score, passed, submittedA
 
 Auth. Chỉ gồm từ thuộc lesson của các course mà user đã `approved`.
 
-| Query           | Mô tả                                                  |
-| --------------- | ------------------------------------------------------ |
-| `status`        | `all` (mặc định) \| `learned` \| `not_learned`         |
-| `courseId`      | lọc theo khoá học                                      |
-| `lessonId`      | lọc theo lesson                                        |
-| `keyword`       | tìm trong `content` hoặc `meaning` (ILIKE)             |
-| `sort`          | `content` \| `-content` \| `createdAt` \| `-createdAt` |
-| `page`, `limit` |                                                        |
+| Query           | Mô tả                                                             |
+| --------------- | ----------------------------------------------------------------- |
+| `status`        | `all` (mặc định) \| `learned` \| `not_learned`                    |
+| `courseId`      | lọc theo khoá học                                                 |
+| `lessonId`      | lọc theo lesson                                                   |
+| `keyword`       | tìm trong `content` hoặc `meaning` (ILIKE, tối đa 255)            |
+| `sort`          | `content` (mặc định) \| `-content` \| `createdAt` \| `-createdAt` |
+| `page`, `limit` |                                                                   |
 
-"Đã học" = từ thuộc lesson mà user có status `pass` (xem lưu ý trong database.md).
+- "Đã học" = từ thuộc lesson mà user có status `pass` (xem lưu ý trong database.md). Tính trên
+  **mọi** lesson chứa từ đó, không phụ thuộc filter `courseId` / `lessonId` (vì `user_lessons`
+  dùng chung giữa các khoá).
+- Khoá đã soft delete không tính. `courseId` / `lessonId` không tồn tại hoặc user không truy cập
+  được thì trả danh sách rỗng (không `403` / `404`).
+- `lessons` của mỗi từ chỉ gồm lesson nằm trong phạm vi và filter hiện tại; lesson thuộc nhiều
+  khoá đã duyệt chỉ hiện một lần.
+- Sắp xếp `content` không phân biệt hoa thường. Kết quả cùng giá trị sắp xếp thì xếp tiếp theo
+  `id`, nên phân trang không trùng hay sót.
+- `%` và `_` trong `keyword` được tìm đúng như ký tự thường. Query sai trả `422 VALIDATION_FAILED`.
 
 ```json
 // 200

@@ -37,7 +37,7 @@ export class WordsService {
       .innerJoin(UserLesson, 'ul', 'ul.lessonId = learned_lw.lessonId')
       .where('learned_lw.wordId = word.id')
       .andWhere('ul.userId = :userId')
-      .andWhere('ul.status = :pass')
+      .andWhere(`ul.status = '${LessonStatus.Pass}'`)
       .getQuery()})`;
 
     const qb = this.words
@@ -45,7 +45,7 @@ export class WordsService {
       .whereExists(
         this.scopedLessonWords(user.id, query).andWhere('lw.wordId = word.id'),
       )
-      .setParameters({ userId: user.id, pass: LessonStatus.Pass });
+      .setParameter('userId', user.id);
     if (query.status === WordStatusFilter.Learned) {
       qb.andWhere(learned);
     } else if (query.status === WordStatusFilter.NotLearned) {

@@ -1196,6 +1196,592 @@
       ]
     },
     {
+      "name": "Words",
+      "description": "User xem danh sách từ và các từ đã học (bước 7). Chạy `Auth / Login (user1)` rồi `Lessons & progress / My approved courses` → `Course lessons` (lưu `approvedCourseId`, `lessonId`) trước.\n\nChỉ gồm từ thuộc lesson của các khoá chưa xoá mà user đã `approved` (user1 seed: 18 từ của khoá TOEIC). \"Đã học\" = từ thuộc lesson user đã `pass`; seed không có lesson nào `pass`, nên `List learned words` ban đầu rỗng. Làm bài test đạt ở folder `Tests` rồi chạy lại để thấy từ đã học.\n\nCác filter kết hợp được với nhau; query param chưa dùng để ở trạng thái tắt (bật trong tab Params).",
+      "item": [
+        {
+          "name": "List words",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/words?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["words"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "`all` (mặc định) | `learned` | `not_learned`",
+                  "disabled": true
+                },
+                {
+                  "key": "courseId",
+                  "value": "",
+                  "description": "Lọc theo khoá học",
+                  "disabled": true
+                },
+                {
+                  "key": "lessonId",
+                  "value": "",
+                  "description": "Lọc theo lesson",
+                  "disabled": true
+                },
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "description": "Tìm trong `content` hoặc `meaning` (ILIKE, tối đa 255)",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "",
+                  "description": "`content` (mặc định) | `-content` | `createdAt` | `-createdAt`",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Trang, bắt đầu từ 1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Tối đa 100"
+                }
+              ]
+            },
+            "description": "Mọi từ user được xem, sắp xếp theo `content` (không phân biệt hoa thường). Mỗi item: `id, content, meaning, learned, lessons[{ id, title }]`; `lessons` là các lesson chứa từ đó trong phạm vi và filter hiện tại.\n\nTrùng giá trị sắp xếp thì xếp tiếp theo `id`, nên phân trang không trùng hay sót."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const items = pm.response.json().items || [];",
+                  "",
+                  "pm.test('items have word fields', () => {",
+                  "  items.forEach((word) => {",
+                  "    pm.expect(word).to.have.keys('id', 'content', 'meaning', 'learned', 'lessons');",
+                  "    pm.expect(word.learned).to.be.a('boolean');",
+                  "    pm.expect(word.lessons).to.be.an('array').that.is.not.empty;",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List learned words",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/words?status=learned&page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["words"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "learned",
+                  "description": "`all` (mặc định) | `learned` | `not_learned`"
+                },
+                {
+                  "key": "courseId",
+                  "value": "",
+                  "description": "Lọc theo khoá học",
+                  "disabled": true
+                },
+                {
+                  "key": "lessonId",
+                  "value": "",
+                  "description": "Lọc theo lesson",
+                  "disabled": true
+                },
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "description": "Tìm trong `content` hoặc `meaning` (ILIKE, tối đa 255)",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "",
+                  "description": "`content` (mặc định) | `-content` | `createdAt` | `-createdAt`",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Trang, bắt đầu từ 1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Tối đa 100"
+                }
+              ]
+            },
+            "description": "Chỉ từ đã học: thuộc **bất kỳ** lesson nào user đã `pass` (không phụ thuộc filter `courseId` / `lessonId`, vì `user_lessons` dùng chung giữa các khoá)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const items = pm.response.json().items || [];",
+                  "",
+                  "pm.test('every word is learned', () => {",
+                  "  items.forEach((word) => pm.expect(word.learned).to.eql(true));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List not learned words",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/words?status=not_learned&page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["words"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "not_learned",
+                  "description": "`all` (mặc định) | `learned` | `not_learned`"
+                },
+                {
+                  "key": "courseId",
+                  "value": "",
+                  "description": "Lọc theo khoá học",
+                  "disabled": true
+                },
+                {
+                  "key": "lessonId",
+                  "value": "",
+                  "description": "Lọc theo lesson",
+                  "disabled": true
+                },
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "description": "Tìm trong `content` hoặc `meaning` (ILIKE, tối đa 255)",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "",
+                  "description": "`content` (mặc định) | `-content` | `createdAt` | `-createdAt`",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Trang, bắt đầu từ 1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Tối đa 100"
+                }
+              ]
+            },
+            "description": "Chỉ từ chưa học."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const items = pm.response.json().items || [];",
+                  "",
+                  "pm.test('no word is learned', () => {",
+                  "  items.forEach((word) => pm.expect(word.learned).to.eql(false));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Words of a course",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/words?courseId={{approvedCourseId}}&page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["words"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "`all` (mặc định) | `learned` | `not_learned`",
+                  "disabled": true
+                },
+                {
+                  "key": "courseId",
+                  "value": "{{approvedCourseId}}",
+                  "description": "Lọc theo khoá học"
+                },
+                {
+                  "key": "lessonId",
+                  "value": "",
+                  "description": "Lọc theo lesson",
+                  "disabled": true
+                },
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "description": "Tìm trong `content` hoặc `meaning` (ILIKE, tối đa 255)",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "",
+                  "description": "`content` (mặc định) | `-content` | `createdAt` | `-createdAt`",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Trang, bắt đầu từ 1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Tối đa 100"
+                }
+              ]
+            },
+            "description": "Từ của một khoá. `courseId` mà user chưa được duyệt hoặc không tồn tại thì trả danh sách rỗng (không 403/404)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const items = pm.response.json().items || [];",
+                  "",
+                  "pm.test('every word has a lesson', () => {",
+                  "  items.forEach((word) => pm.expect(word.lessons).to.not.be.empty);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Words of a lesson",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/words?lessonId={{lessonId}}&page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["words"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "`all` (mặc định) | `learned` | `not_learned`",
+                  "disabled": true
+                },
+                {
+                  "key": "courseId",
+                  "value": "",
+                  "description": "Lọc theo khoá học",
+                  "disabled": true
+                },
+                {
+                  "key": "lessonId",
+                  "value": "{{lessonId}}",
+                  "description": "Lọc theo lesson"
+                },
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "description": "Tìm trong `content` hoặc `meaning` (ILIKE, tối đa 255)",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "",
+                  "description": "`content` (mặc định) | `-content` | `createdAt` | `-createdAt`",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Trang, bắt đầu từ 1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Tối đa 100"
+                }
+              ]
+            },
+            "description": "Từ của một lesson; `lessons` của mỗi từ chỉ còn lesson đó. Lesson không truy cập được thì trả danh sách rỗng.\n\nMuốn xem từ theo đúng thứ tự trong bài thì dùng `Lessons & progress / Lesson detail`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const items = pm.response.json().items || [];",
+                  "",
+                  "const lessonId = pm.collectionVariables.get('lessonId');",
+                  "pm.test('every word belongs to the lesson', () => {",
+                  "  items.forEach((word) => {",
+                  "    pm.expect(word.lessons.map((lesson) => lesson.id)).to.eql([lessonId]);",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search by keyword",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/words?keyword=hạn&page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["words"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "`all` (mặc định) | `learned` | `not_learned`",
+                  "disabled": true
+                },
+                {
+                  "key": "courseId",
+                  "value": "",
+                  "description": "Lọc theo khoá học",
+                  "disabled": true
+                },
+                {
+                  "key": "lessonId",
+                  "value": "",
+                  "description": "Lọc theo lesson",
+                  "disabled": true
+                },
+                {
+                  "key": "keyword",
+                  "value": "hạn",
+                  "description": "Tìm trong `content` hoặc `meaning` (ILIKE, tối đa 255)"
+                },
+                {
+                  "key": "sort",
+                  "value": "",
+                  "description": "`content` (mặc định) | `-content` | `createdAt` | `-createdAt`",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Trang, bắt đầu từ 1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Tối đa 100"
+                }
+              ]
+            },
+            "description": "Tìm trong `content` hoặc `meaning`, không phân biệt hoa thường. `%` và `_` được tìm như ký tự thường. Với user1 seed, `hạn` tìm thấy `deadline` (hạn chót)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const items = pm.response.json().items || [];",
+                  "",
+                  "const keyword = decodeURIComponent(pm.request.url.query.get('keyword')).toLowerCase();",
+                  "pm.test('content or meaning contains keyword', () => {",
+                  "  items.forEach((word) => {",
+                  "    const text = `${word.content} ${word.meaning}`.toLowerCase();",
+                  "    pm.expect(text).to.include(keyword);",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sort by content desc",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/words?sort=-content&page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["words"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "`all` (mặc định) | `learned` | `not_learned`",
+                  "disabled": true
+                },
+                {
+                  "key": "courseId",
+                  "value": "",
+                  "description": "Lọc theo khoá học",
+                  "disabled": true
+                },
+                {
+                  "key": "lessonId",
+                  "value": "",
+                  "description": "Lọc theo lesson",
+                  "disabled": true
+                },
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "description": "Tìm trong `content` hoặc `meaning` (ILIKE, tối đa 255)",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "-content",
+                  "description": "`content` (mặc định) | `-content` | `createdAt` | `-createdAt`"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Trang, bắt đầu từ 1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Tối đa 100"
+                }
+              ]
+            },
+            "description": "Sắp xếp Z→A theo `content`. Các giá trị khác: `content`, `createdAt`, `-createdAt`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const items = pm.response.json().items || [];",
+                  "",
+                  "pm.test('sorted by content desc', () => {",
+                  "  const contents = items.map((word) => word.content.toLowerCase());",
+                  "  const sorted = [...contents].sort().reverse();",
+                  "  pm.expect(contents).to.eql(sorted);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List words – invalid query",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/words?status=unknown&courseId=abc&sort=meaning&page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["words"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "unknown",
+                  "description": "`all` (mặc định) | `learned` | `not_learned`"
+                },
+                {
+                  "key": "courseId",
+                  "value": "abc",
+                  "description": "Lọc theo khoá học"
+                },
+                {
+                  "key": "lessonId",
+                  "value": "",
+                  "description": "Lọc theo lesson",
+                  "disabled": true
+                },
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "description": "Tìm trong `content` hoặc `meaning` (ILIKE, tối đa 255)",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "meaning",
+                  "description": "`content` (mặc định) | `-content` | `createdAt` | `-createdAt`"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Trang, bắt đầu từ 1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Tối đa 100"
+                }
+              ]
+            },
+            "description": "Query sai: mong đợi `422 VALIDATION_FAILED`, `errors` có `status`, `courseId`, `sort`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));",
+                  "",
+                  "pm.test('code VALIDATION_FAILED', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.code).to.eql('VALIDATION_FAILED');",
+                  "  pm.expect(body.errors.map((error) => error.field)).to.have.members(['status', 'courseId', 'sort']);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Admin – User courses",
       "description": "Admin duyệt / từ chối / thu hồi đăng ký khoá học (bước 4). Chạy `Auth / Login (admin)` trước; token user nhận `403 FORBIDDEN`.\n\nThứ tự gợi ý: `Courses / Enroll course` (bằng user, lưu `userCourseId`) → login admin → `List user courses` → `Approve` → `Reject / revoke` (thu hồi). Muốn thử đăng ký lại: login user và chạy lại `Enroll course`.\n\nKhông gửi mail ở Phase 1.",
       "item": [

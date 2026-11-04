@@ -148,8 +148,17 @@ Nguyên tắc:
 
 ## Bước 7 – Danh sách từ
 
-- [ ] `GET /words`: lọc `status=learned|not_learned`, `courseId`, `lessonId`, `keyword`;
-      sắp xếp; phân trang.
+Đang review ở PR #6 (branch `feat/words`, commit `2a817d9`).
+
+- [x] `GET /words`: lọc `status=learned|not_learned`, `courseId`, `lessonId`, `keyword`;
+      sắp xếp (mặc định `content`, không phân biệt hoa thường); phân trang. Mỗi từ kèm `learned`
+      và các `lessons` chứa nó.
+- [x] Chỉ gồm từ của lesson thuộc khoá chưa xoá mà user đã `approved`. "Đã học" tính trên mọi
+      lesson user đã `pass`, không phụ thuộc filter course / lesson.
+- [x] Query bằng QueryBuilder với `EXISTS` nên mỗi từ một dòng, `COUNT` và phân trang không bị
+      nhân dòng; mỗi request 3 query (đếm, lấy trang, lesson của các từ trong trang).
+- [x] Kiểm tra: chạy thật trên local với dữ liệu seed và `user_lessons` / đăng ký chèn tạm
+      (lesson thuộc 2 khoá, khoá đã xoá, từ đã học) và collection Postman (folder `Words`).
 
 ## Để sau (ngoài Phase 1)
 

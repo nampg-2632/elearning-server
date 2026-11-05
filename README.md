@@ -78,7 +78,6 @@ Có thể ghi đè riêng cho máy mình bằng `.env.local` (được ưu tiên
 | `yarn start:dev`                    | Chạy app, tự reload khi sửa code              |
 | `yarn build` / `yarn start:prod`    | Build ra `dist/` và chạy bản build            |
 | `yarn test` / `yarn test:cov`       | Unit test (`src/**/*.spec.ts`) / kèm coverage |
-| `yarn test:e2e`                     | E2E test (`test/`), cần DB và Redis           |
 | `yarn lint` / `yarn lint:check`     | ESLint có sửa / chỉ kiểm tra                  |
 | `yarn format` / `yarn format:check` | Prettier                                      |
 | `yarn typecheck`                    | Kiểm tra kiểu TypeScript                      |
@@ -119,3 +118,12 @@ src/
 - **Commit:** theo [Conventional Commits](https://www.conventionalcommits.org/), ví dụ
   `feat(auth): add login rate limit`. Husky chạy lint-staged (ESLint, Prettier) trước khi
   commit và commitlint kiểm tra commit message.
+
+## CI
+
+GitHub Actions (`.github/workflows/ci.yml`) chạy khi mở PR vào `main` và khi push `main`:
+
+- **Lint, typecheck, test, build:** `lint:check`, `format:check`, `typecheck`, `test`, `build`.
+- **Migrations and seed:** trên Postgres 16 sạch, chạy migrate → revert (schema phải trống) →
+  migrate lại (schema phải giống lần đầu), rồi seed 2 lần (số dòng mỗi bảng không đổi).
+- **Commit messages:** commitlint các commit trong PR.

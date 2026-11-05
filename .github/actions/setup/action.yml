@@ -1,0 +1,23 @@
+name: Setup
+description: Install Node from .nvmrc and restore node_modules, installing only when yarn.lock or Node changed
+
+runs:
+  using: composite
+  steps:
+    - id: node
+      uses: actions/setup-node@v5
+      with:
+        node-version-file: .nvmrc
+        cache: yarn
+
+    # node_modules holds native builds (argon2), so the key includes the OS
+    # and Node version besides yarn.lock.
+    - id: cache
+      uses: actions/cache@v4
+      with:
+        path: node_modules
+        key: node-modules-${{ runner.os }}-node${{ steps.node.outputs.node-version }}-${{ hashFiles('yarn.lock') }}
+
+    - if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: yarn install --frozen-lockfile

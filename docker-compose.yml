@@ -1,0 +1,64 @@
+# Local development: `docker compose up` starts the API in watch mode with
+# Postgres, Redis and Mailpit. Host ports can be moved with the *_PORT
+# variables (e.g. when Postgres or Redis already run on the host).
+name: elearning
+
+services:
+  app:
+    build:
+      context: .
+      target: dev
+    env_file: .env
+    # Inside the network the services are reached by name, not localhost.
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379
+    ports:
+      - ${APP_PORT:-3000}:3000
+    volumes:
+      - .:/app
+      # Keep the image's node_modules (Linux binaries) instead of the host's.
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    # Credentials come from .env (not committed); compose stops if one is
+    # missing. The password only applies when the data volume is created.
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+    ports:
+      - ${POSTGRES_PORT:-5432}:5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - ${REDIS_PORT:-6379}:6379
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Catches every mail the app sends; web UI on http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:v1.33
+    ports:
+      - ${MAILPIT_SMTP_PORT:-1025}:1025
+      - ${MAILPIT_UI_PORT:-8025}:8025
+
+volumes:
+  postgres-data:

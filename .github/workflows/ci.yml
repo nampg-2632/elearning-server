@@ -40,7 +40,7 @@ jobs:
     # Each value is set once here and reused below through YAML anchors,
     # since service env cannot read the job's env context.
     services:
-      postgres:
+      postgres: &postgres-service
         image: postgres:16
         env:
           POSTGRES_USER: &pg_user elearning
@@ -113,6 +113,79 @@ jobs:
           count_rows > rows-2.txt
           cat rows-1.txt
           diff -u rows-1.txt rows-2.txt
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # Same throwaway Postgres as the migrations job.
+    services:
+      postgres: *postgres-service
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGUSER: *pg_user
+      PGPASSWORD: *pg_password
+      PGDATABASE: *pg_database
+      IMAGE: elearning-server:ci
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build production image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: runner
+          tags: ${{ env.IMAGE }}
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # The image runs on the host network so localhost reaches the services.
+      - name: Migrate with the image
+        run: |
+          export DATABASE_URL="postgresql://$PGUSER:$PGPASSWORD@localhost:5432/$PGDATABASE"
+          echo "DATABASE_URL=$DATABASE_URL" >> "$GITHUB_ENV"
+          docker run --rm --network host -e DATABASE_URL "$IMAGE" yarn db:migrate:prod
+
+      - name: Start the app and wait until ready
+        run: |
+          docker run -d --name app --network host \
+            -e DATABASE_URL -e REDIS_URL=redis://localhost:6379 \
+            -e JWT_SECRET=ci-only-secret-not-used-anywhere-else \
+            "$IMAGE"
+          for _ in $(seq 1 30); do
+            curl -sf http://localhost:3000/health/ready && exit 0
+            sleep 2
+          done
+          echo "::error::App did not become ready"
+          exit 1
+
+      # Registering hashes a password, so this catches native modules
+      # (argon2) that load but crash in the image.
+      - name: Smoke test
+        run: |
+          status=$(curl -s -o /dev/null -w '%{http_code}' \
+            -X POST http://localhost:3000/api/v1/auth/register \
+            -H 'content-type: application/json' \
+            -d '{"email":"smoke@elearning.local","password":"Smoke12345","fullName":"Smoke"}')
+          if [ "$status" != 201 ]; then
+            echo "::error::Register returned $status"
+            exit 1
+          fi
+
+      - name: App logs
+        if: always()
+        run: docker logs app || true
 
   commitlint:
     name: Commit messages

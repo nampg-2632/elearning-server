@@ -160,6 +160,103 @@ Nguyên tắc:
 - [x] Kiểm tra: chạy thật trên local với dữ liệu seed và `user_lessons` / đăng ký chèn tạm
       (lesson thuộc 2 khoá, khoá đã xoá, từ đã học) và collection Postman (folder `Words`).
 
+## Hạ tầng – Đã chốt
+
+| Mục           | Lựa chọn                                                                                                                                               |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Server        | VPS 2 CPU / 4 GB RAM / 40 GB SSD, Ubuntu 24.04 LTS x64 (image `linux/amd64`)                                                                           |
+| Chạy trên VPS | App, Postgres, Redis, Caddy (HTTPS tự động), monitoring tự host                                                                                        |
+| Mail prod     | SMTP của hosting shared (465/587), hosting chỉ dùng cho mail, không chạy app                                                                           |
+| Mail dev      | Mailpit (SMTP `1025`, web UI `8025`)                                                                                                                   |
+| Nội dung mail | Song ngữ trong một mail: tiếng Việt ở trên, tiếng Anh ở dưới; không cần cột ngôn ngữ cho user                                                          |
+| Registry      | GHCR (`ghcr.io/<owner>/elearning-server`), chỉ giữ ~5 image gần nhất                                                                                   |
+| Monitoring    | Prometheus + Grafana + Loki tự host; lỗi gửi Sentry (free)                                                                                             |
+| Tên miền      | Không ghi domain thật vào repo. Caddy đọc từ biến `API_HOST`, CD lấy từ secret của GitHub Environment `production`; `MAIL_*` cũng chỉ nằm trong secret |
+| Cảnh báo      | Discord qua webhook (Alertmanager `discord_configs`); webhook URL là secret `DISCORD_WEBHOOK_URL`, không ghi vào repo                                  |
+
+## Bước 8 – CI
+
+- [ ] `.github/workflows/ci.yml` chạy khi có PR vào `main` và khi push `main`; Node theo `.nvmrc`,
+      `yarn install --frozen-lockfile`, cache yarn.
+- [ ] Job kiểm tra: `lint:check`, `format:check`, `typecheck`, `test`, `build`.
+- [ ] Job migration với service `postgres` + `redis`: migrate → revert → migrate, seed 2 lần.
+- [ ] Commitlint cho các commit trong PR.
+- [ ] Xoá `test/app.e2e-spec.ts` mẫu ("Hello World").
+- [ ] Sau khi merge: bật branch protection cho `main`, bắt buộc CI pass (làm tay trên GitHub).
+
+## Bước 9 – Docker và health check
+
+- [ ] `GET /health/live` (process còn chạy) và `GET /health/ready` (`SELECT 1` + Redis `PING`),
+      đều `@Public`.
+- [ ] `Dockerfile` multi-stage trên `node:20.19-slim`: build → prod deps
+      (`--production --ignore-scripts`, tránh `prepare: husky`) → runner chạy user `node`,
+      có `HEALTHCHECK`, `CMD ["node", "dist/main"]`.
+- [ ] Script `db:migrate:prod` chạy migration từ `dist/database/typeorm.datasource.js`
+      (image prod không có ts-node; seed chỉ dùng ở dev).
+- [ ] `.dockerignore`; `docker-compose.yml` cho dev: `postgres`, `redis`, `mailpit` (có healthcheck,
+      volume), service `app` đặt sau profile.
+- [ ] README: dựng môi trường dev bằng `docker compose up -d`.
+- [ ] CI: thêm job build image (chưa push).
+
+## Bước 10 – Gửi mail
+
+- [ ] `@nestjs/bullmq`, `bullmq`, `nodemailer`, `handlebars`. Queue `mail` dùng `REDIS_URL`,
+      prefix `${REDIS_KEY_PREFIX}bull`.
+- [ ] Env (validate + `.env.example`): `MAIL_HOST`, `MAIL_PORT`, `MAIL_SECURE`, `MAIL_USER`,
+      `MAIL_PASSWORD`, `MAIL_FROM`, `MAIL_RATE_PER_HOUR`.
+- [ ] `MailModule`: `MailService` đưa job vào queue; `MailProcessor` render template và gửi bằng
+      nodemailer; retry 3 lần backoff tăng dần; rate limiter theo `MAIL_RATE_PER_HOUR` (hosting
+      shared giới hạn mail/giờ).
+- [ ] Template song ngữ (vi trên, en dưới, HTML + text): `course-approved`, `course-rejected`,
+      `course-revoked` (từ chối / thu hồi kèm `reason` nếu có). Tiêu đề dạng
+      `Đăng ký khoá học đã được duyệt / Course enrollment approved`. Thêm template vào `assets`
+      của `nest-cli.json`.
+- [ ] Gọi từ `AdminUserCoursesService.approve/reject` **sau khi transaction commit**; enqueue lỗi
+      thì chỉ log, API vẫn thành công.
+- [ ] Unit test processor (mock transporter) và việc enqueue đúng template ở 3 trường hợp; chạy thật
+      với Mailpit.
+- [ ] Cập nhật `api-spec.md`, bỏ mail khỏi phần tạm hoãn.
+- Việc làm tay trước khi chạy prod: tạo hộp mail `no-reply@<domain>` trên hosting; bật SPF, DKIM,
+  DMARC; từ VPS kiểm tra `nc -vz mail.<domain> 465` và hosting cho đăng nhập SMTP từ IP VPS.
+
+## Bước 11 – Monitoring
+
+- [ ] Log: `nestjs-pino`, JSON ở prod / `pino-pretty` ở dev, `requestId` (nhận `x-request-id` hoặc
+      tự sinh, trả lại trong response), redact `authorization`, `password`, `token`; bỏ log
+      `/health`, `/metrics`. `AllExceptionsFilter`: 5xx log `error` kèm stack.
+- [ ] Metrics: `prom-client`, `/metrics` trên cổng riêng `METRICS_PORT` chỉ mở nội bộ. Gồm metric
+      mặc định của Node, HTTP duration theo `method` / `route` (template) / `status`, pool DB, queue
+      `mail`, chỉ số nghiệp vụ (đăng ký, duyệt/từ chối, nộp bài).
+- [ ] Sentry (`@sentry/nestjs`) cho lỗi 5xx kèm `requestId`, `userId`, release (git sha); tắt khi
+      `SENTRY_DSN` trống.
+- [ ] Compose profile `monitoring`: Prometheus, Grafana (datasource + dashboard provision sẵn trong
+      `monitoring/grafana/`), Loki + Promtail, postgres-exporter, redis-exporter, node-exporter.
+- [ ] Alert rule (`monitoring/prometheus/alerts.yml`): app down > 1 phút, 5xx > 5% trong 5 phút,
+      p95 > 1s, có job mail lỗi, pool DB cạn. Alertmanager gửi cảnh báo (và báo hết lỗi) vào
+      channel Discord qua `DISCORD_WEBHOOK_URL`.
+- [ ] Unit test redact log và label `route`; chạy thật: xem dashboard/log, tạo lỗi 500 xem Sentry,
+      tắt Redis xem `/health/ready` và alert.
+- Việc làm tay: tạo project Sentry, lấy `SENTRY_DSN`; tạo server Discord riêng, channel `#alerts`,
+  tạo webhook (Server Settings → Integrations → Webhooks), lấy `DISCORD_WEBHOOK_URL`.
+
+## Bước 12 – CD và production
+
+- [ ] `release.yml`: merge vào `main` → build image `linux/amd64`, push GHCR tag `sha-<short>` +
+      `latest`, dọn image cũ.
+- [ ] `docker-compose.prod.yml`: app, Postgres, Redis, Caddy, monitoring; `mem_limit` từng
+      container, rotate log Docker (`max-size: 10m`, `max-file: 3`), Prometheus giữ 15 ngày, Loki
+      giữ 7 ngày. Grafana không public (SSH tunnel hoặc subdomain có basic auth sau Caddy).
+- [ ] Deploy qua SSH: `pull` → chạy `db:migrate:prod` → `up -d` → chờ `/health/ready`, lỗi thì
+      job fail. Gắn git sha vào image và Sentry release.
+- [ ] Backup `pg_dump` bằng cron, giữ vài bản trên VPS, đẩy một bản ra ngoài.
+- [ ] Script chuẩn bị VPS Ubuntu 24.04: Docker Engine + Compose plugin (repo apt của Docker), user
+      `deploy` (group `docker`, SSH key), `ufw` chỉ mở 22/80/443, swap 2 GB, `fail2ban`,
+      `unattended-upgrades`.
+- [ ] README: phần deploy.
+- Việc làm tay: chạy script chuẩn bị VPS; trỏ DNS domain về IP VPS; tạo GitHub Environment
+  `production` với secrets (SSH key, `DATABASE_URL`, `JWT_SECRET`, `MAIL_*`, `SENTRY_DSN`, `API_HOST`…);
+  sau deploy tạo uptime check (UptimeRobot / Better Stack) vào `/health/ready`.
+
 ## Để sau (ngoài Phase 1)
 
 Profile, lọc từ nâng cao, đăng nhập Facebook/Twitter/Google, admin CRUD lesson/word/test,
@@ -167,7 +264,6 @@ thêm admin quản lý course, refresh token.
 
 Tạm hoãn trong Phase 1:
 
-- Gửi mail khi approve/reject (mail module BullMQ + nodemailer, mẫu mail vi/en, chọn SMTP cho dev).
 - Giới hạn thời gian làm bài test, xáo trộn thứ tự đáp án.
 - Cache tiến độ trên Redis (`progress:{userId}:{courseId}`). Khi làm phải xoá cache khi user nộp
   bài (mọi course chứa lesson đó), khi admin đổi danh sách lesson của course (mọi user của course)

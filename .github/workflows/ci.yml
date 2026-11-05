@@ -36,45 +36,55 @@ jobs:
     name: Migrations and seed
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    # Throwaway database that lives only for this job; not a real secret.
+    # Each value is set once here and reused below through YAML anchors,
+    # since service env cannot read the job's env context.
     services:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: elearning
-          POSTGRES_PASSWORD: elearning_ci
-          POSTGRES_DB: elearning
+          POSTGRES_USER: &pg_user elearning
+          POSTGRES_PASSWORD: &pg_password elearning_ci
+          POSTGRES_DB: &pg_database elearning
         ports:
           - 5432:5432
+        # $POSTGRES_USER is expanded by the health check shell inside the container.
         options: >-
-          --health-cmd "pg_isready -U elearning"
+          --health-cmd "pg_isready -U $POSTGRES_USER"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+    # PG* are the standard libpq variables, read by psql and pg_dump.
     env:
-      DATABASE_URL: postgresql://elearning:elearning_ci@localhost:5432/elearning
+      PGUSER: *pg_user
+      PGPASSWORD: *pg_password
+      PGDATABASE: *pg_database
     steps:
       # The job context is only available inside steps, not in job-level env.
-      - name: Export postgres container id
-        run: echo "PG_CONTAINER=${{ job.services.postgres.id }}" >> "$GITHUB_ENV"
+      - name: Export database url and postgres container id
+        run: |
+          echo "DATABASE_URL=postgresql://$PGUSER:$PGPASSWORD@localhost:5432/$PGDATABASE" >> "$GITHUB_ENV"
+          echo "PG_CONTAINER=${{ job.services.postgres.id }}" >> "$GITHUB_ENV"
 
       - uses: actions/checkout@v5
 
       - uses: ./.github/actions/setup
 
       # Postgres tools run inside the service container so their version
-      # always matches the server. Recent pg_dump wraps the dump in
+      # always matches the server; `docker exec -e` passes PGUSER/PGDATABASE
+      # through. Recent pg_dump wraps the dump in
       # \restrict/\unrestrict lines with a random token; drop them so two
       # dumps of the same schema compare equal.
       - name: Migrate
         run: |
           yarn db:migrate
-          docker exec "$PG_CONTAINER" pg_dump -U elearning --schema-only elearning \
+          docker exec -e PGUSER -e PGDATABASE "$PG_CONTAINER" pg_dump --schema-only \
             | grep -vE '^\\(un)?restrict ' > schema-1.sql
 
       - name: Revert leaves an empty schema
         run: |
           yarn db:migrate:revert
-          tables=$(docker exec "$PG_CONTAINER" psql -U elearning -d elearning -tAc \
+          tables=$(docker exec -e PGUSER -e PGDATABASE "$PG_CONTAINER" psql -tAc \
             "SELECT string_agg(tablename, ', ') FROM pg_tables
              WHERE schemaname = 'public' AND tablename <> 'typeorm_migrations'")
           if [ -n "$tables" ]; then
@@ -85,14 +95,14 @@ jobs:
       - name: Migrate again gives the same schema
         run: |
           yarn db:migrate
-          docker exec "$PG_CONTAINER" pg_dump -U elearning --schema-only elearning \
+          docker exec -e PGUSER -e PGDATABASE "$PG_CONTAINER" pg_dump --schema-only \
             | grep -vE '^\\(un)?restrict ' > schema-2.sql
           diff -u schema-1.sql schema-2.sql
 
       - name: Seed twice without duplicating rows
         run: |
           count_rows() {
-            docker exec "$PG_CONTAINER" psql -U elearning -d elearning -tAc \
+            docker exec -e PGUSER -e PGDATABASE "$PG_CONTAINER" psql -tAc \
               "SELECT tablename || ' ' || (xpath('/row/c/text()',
                  query_to_xml(format('SELECT count(*) AS c FROM %I', tablename), false, true, '')))[1]
                FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename"

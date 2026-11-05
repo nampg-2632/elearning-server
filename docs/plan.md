@@ -148,7 +148,7 @@ Nguyên tắc:
 
 ## Bước 7 – Danh sách từ
 
-Đang review ở PR #6 (branch `feat/words`, commit `2a817d9`).
+Đã merge vào `main` qua PR #6 (`a2c1ebc`, commit `2d54480`, `21e1fee`).
 
 - [x] `GET /words`: lọc `status=learned|not_learned`, `courseId`, `lessonId`, `keyword`;
       sắp xếp (mặc định `content`, không phân biệt hoa thường); phân trang. Mỗi từ kèm `learned`

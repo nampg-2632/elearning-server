@@ -71,6 +71,10 @@ export class RedisService implements OnModuleInit, OnApplicationShutdown {
     }
   }
 
+  ping(): Promise<string> {
+    return this.client.ping();
+  }
+
   get(key: string): Promise<string | null> {
     return this.client.get(key);
   }

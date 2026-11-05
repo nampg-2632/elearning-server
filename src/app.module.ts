@@ -22,6 +22,7 @@ import { validateEnv } from './config/env.validation';
 import { CoursesModule } from './courses/courses.module';
 import { DatabaseModule } from './database/database.module';
 import { EnrollmentsModule } from './enrollments/enrollments.module';
+import { HealthModule } from './health/health.module';
 import { LessonsModule } from './lessons/lessons.module';
 import { ProgressModule } from './progress/progress.module';
 import { RedisModule } from './redis/redis.module';
@@ -66,6 +67,7 @@ import { WordsModule } from './words/words.module';
     TestsModule,
     EnrollmentsModule,
     ProgressModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [

@@ -176,13 +176,18 @@ Nguyên tắc:
 
 ## Bước 8 – CI
 
-- [ ] `.github/workflows/ci.yml` chạy khi có PR vào `main` và khi push `main`; Node theo `.nvmrc`,
-      `yarn install --frozen-lockfile`, cache yarn.
-- [ ] Job kiểm tra: `lint:check`, `format:check`, `typecheck`, `test`, `build`.
-- [ ] Job migration với service `postgres` + `redis`: migrate → revert → migrate, seed 2 lần.
-- [ ] Commitlint cho các commit trong PR.
-- [ ] Xoá `test/app.e2e-spec.ts` mẫu ("Hello World").
-- [ ] Sau khi merge: bật branch protection cho `main`, bắt buộc CI pass (làm tay trên GitHub).
+Đã merge vào `main` qua PR #7 (`3ebd0fc`, commit `5b19349`, `9f3d69f`).
+
+- [x] `.github/workflows/ci.yml` chạy khi có PR vào `main` và khi push `main`; push mới huỷ lượt
+      chạy cũ. Composite action `.github/actions/setup` dùng chung: Node theo `.nvmrc`, cache
+      `node_modules` theo OS + version Node + hash `yarn.lock` (trúng cache thì bỏ `yarn install`).
+- [x] Job kiểm tra: `lint:check`, `format:check`, `typecheck`, `test`, `build`.
+- [x] Job migration chỉ cần `postgres` (không cần Redis): migrate → revert (không còn bảng) →
+      migrate (`pg_dump` schema giống lần đầu, bỏ dòng `\restrict`), seed 2 lần (số dòng không
+      đổi). User/password/DB khai báo một lần ở service, dùng lại qua YAML anchor và `PG*`.
+- [x] Commitlint cho các commit trong PR (job riêng, không gộp vào job kiểm tra).
+- [x] Xoá e2e mẫu (`test/app.e2e-spec.ts`, `test/jest-e2e.json`, script `test:e2e`).
+- [ ] Bật branch protection cho `main`, bắt buộc 3 check pass (làm tay trên GitHub).
 
 ## Bước 9 – Docker và health check
 

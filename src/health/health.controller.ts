@@ -1,13 +1,13 @@
-import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
+import { Controller, Get, UseFilters } from '@nestjs/common';
 import {
   ApiOkResponse,
   ApiServiceUnavailableResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import type { Response } from 'express';
 import { Public } from '../common/decorators/public.decorator';
 import { HealthReportDto, LivenessDto } from './dto/health-report.dto';
 import { HealthStatus } from './enums/health-status.enum';
+import { HealthCheckFailedFilter } from './filters/health-check-failed.filter';
 import { HealthService } from './health.service';
 
 // Served outside API_PREFIX (see main.ts) so probes do not depend on it.
@@ -28,13 +28,8 @@ export class HealthController {
   @Get('ready')
   @ApiOkResponse({ type: HealthReportDto })
   @ApiServiceUnavailableResponse({ type: HealthReportDto })
-  async ready(
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<HealthReportDto> {
-    const report = await this.healthService.readiness();
-    if (report.status !== HealthStatus.Ok) {
-      res.status(HttpStatus.SERVICE_UNAVAILABLE);
-    }
-    return report;
+  @UseFilters(HealthCheckFailedFilter)
+  ready(): Promise<HealthReportDto> {
+    return this.healthService.ready();
   }
 }

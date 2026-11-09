@@ -141,6 +141,71 @@ NODE_ENV=production yarn start:prod        # node dist/main
 Cần tự cài Node 24, PostgreSQL, Redis và dùng trình quản lý process (pm2, systemd...) để app tự
 khởi động lại.
 
+## Deploy lên VPS
+
+Mỗi lần push `main`, workflow `.github/workflows/release.yml` build image `linux/amd64`, đẩy lên
+GHCR (`ghcr.io/nampg-2632/elearning-server`, tag `sha-<7 ký tự>` và `latest`, giữ 5 bản gần nhất)
+rồi SSH vào VPS chạy `deploy/deploy.sh`:
+
+1. pull image mới;
+2. bật Postgres, Redis;
+3. chạy migration bằng image mới;
+4. khởi động app mới, chờ `/health/ready`. Nếu không ready trong 90 giây thì bật lại image trước
+   đó và job báo lỗi.
+
+Trên VPS (`/opt/elearning`) chạy `deploy/docker-compose.prod.yml`: app, PostgreSQL, Redis và Caddy
+(HTTPS tự động). Chỉ Caddy mở cổng 80/443. File `.env` trên VPS được ghi lại mỗi lần deploy từ
+secret của GitHub, không sửa tay.
+
+Migration chạy trước khi bản mới khởi động và không bị revert khi rollback, nên phải tương thích
+với bản đang chạy: thêm bảng/cột thì được, xoá hoặc đổi tên thì tách thành nhiều lần deploy.
+
+### Chuẩn bị (làm một lần)
+
+1. VPS Ubuntu 24.04, trỏ DNS (bản ghi `A`) của domain API về IP VPS.
+2. Tạo key cho GitHub Actions trên máy mình:
+   `ssh-keygen -t ed25519 -N "" -C github-actions-deploy -f ~/.ssh/elearning_deploy`
+3. Chạy script chuẩn bị VPS (Docker, user `deploy`, firewall chỉ mở 22/80/443, swap, fail2ban,
+   tự cập nhật bảo mật):
+
+   ```bash
+   scp scripts/setup-vps.sh root@<IP>:
+   ssh root@<IP> "DEPLOY_PUBKEY='$(cat ~/.ssh/elearning_deploy.pub)' bash setup-vps.sh"
+   ```
+
+4. GitHub → Settings → Environments → tạo `prod` với các secret:
+
+   | Secret              | Giá trị                                                            |
+   | ------------------- | ------------------------------------------------------------------ |
+   | `SSH_HOST`          | IP VPS                                                             |
+   | `SSH_USER`          | `deploy`                                                           |
+   | `SSH_PRIVATE_KEY`   | Nội dung `~/.ssh/elearning_deploy`                                 |
+   | `SSH_KNOWN_HOSTS`   | Kết quả `ssh-keyscan <IP>`                                         |
+   | `API_HOST`          | Domain API (HTTPS tự động); `http://<domain>` nếu chỉ muốn HTTP    |
+   | `JWT_SECRET`        | `openssl rand -hex 32`                                             |
+   | `POSTGRES_PASSWORD` | `openssl rand -hex 24`; chỉ áp dụng lần đầu tạo database           |
+   | `CORS_ORIGINS`      | Origin của frontend, cách nhau bởi dấu phẩy (bỏ trống nếu chưa có) |
+
+   Và các variable (tab **Environment variables**, không phải bí mật):
+
+   | Variable        | Giá trị                                                     |
+   | --------------- | ----------------------------------------------------------- |
+   | `POSTGRES_USER` | User của database, ví dụ `elearning`                        |
+   | `POSTGRES_DB`   | Tên database, ví dụ `elearning`; cả hai chỉ áp dụng lần đầu |
+
+### Rollback và deploy lại
+
+Actions → **Release** → **Run workflow**, nhập tag cũ (ví dụ `sha-1a2b3c4`, xem trong Packages)
+để deploy lại image đó mà không build. Để trống tag thì build và deploy branch đang chọn.
+
+Xem log trên VPS:
+
+```bash
+ssh deploy@<IP>
+cd /opt/elearning
+docker compose -f docker-compose.prod.yml logs -f app
+```
+
 ## Biến môi trường
 
 | Biến                     | Mặc định      | Mô tả                                                |
@@ -151,6 +216,7 @@ khởi động lại.
 | `API_PREFIX`             | `api/v1`      | Prefix cho mọi route                                 |
 | `CORS_ORIGINS`           |               | Danh sách origin, cách nhau bởi dấu phẩy; rỗng = tắt |
 | `FALLBACK_LANGUAGE`      | `vi`          | Ngôn ngữ mặc định (`vi` \| `en`)                     |
+| `TRUST_PROXY`            | `0`           | Số reverse proxy phía trước (Caddy trên VPS = `1`)   |
 | `DATABASE_URL`           | **bắt buộc**  | Chuỗi kết nối PostgreSQL                             |
 | `DATABASE_POOL_MAX`      | `10`          |                                                      |
 | `DATABASE_LOGGING`       | `false`       | Log câu SQL                                          |
@@ -223,3 +289,5 @@ GitHub Actions (`.github/workflows/ci.yml`) chạy khi mở PR vào `main` và k
 - **Docker image:** build image production, chạy migration bằng image, khởi động app, chờ
   `/health/ready` rồi gọi thử đăng ký (kiểm tra `argon2` chạy được trong image).
 - **Commit messages:** commitlint các commit trong PR.
+
+Deploy chạy ở workflow riêng `release.yml`, xem [Deploy lên VPS](#deploy-lên-vps).

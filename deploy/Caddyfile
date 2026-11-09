@@ -1,0 +1,6 @@
+# API_HOST is a bare host name (api.example.com) for automatic HTTPS, or
+# http://host to serve plain HTTP only.
+{$API_HOST} {
+	encode gzip
+	reverse_proxy app:3000
+}

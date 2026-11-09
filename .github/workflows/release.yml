@@ -1,0 +1,177 @@
+name: Release
+run-name: Release ${{ inputs.tag || github.event.workflow_run.display_title || github.ref_name }}
+
+# Runs after CI passes on a push to main: builds the commit CI tested, pushes
+# it to GHCR and deploys it to the VPS. Run it by hand with a tag (e.g.
+# sha-1a2b3c4) to redeploy or roll back to an image already in GHCR, or
+# without one to build and deploy the selected branch.
+#
+# workflow_run only fires for the copy of this file on main.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Image tag to deploy (empty = build the selected branch)
+        required: false
+
+# One release at a time; a newer push waits instead of cancelling a deploy.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+  # The commit CI tested; github.sha would be the latest commit on main.
+  SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+jobs:
+  build:
+    name: Build and push image
+    # CI on main can also come from a pull_request run; only pushes deploy.
+    if: >-
+      (github.event_name == 'workflow_dispatch' && !inputs.tag) ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.SHA }}
+
+      - name: Image tag
+        id: tag
+        run: echo "tag=sha-${SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # provenance off: it adds an extra untagged manifest to every push.
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: runner
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.tag.outputs.tag }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Keep the 5 latest images
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ github.event.repository.name }}
+          package-type: container
+          min-versions-to-keep: 5
+
+  deploy:
+    name: Deploy to VPS
+    needs: build
+    # After a build, or on its own for a manual run with a tag.
+    if: >-
+      !cancelled() &&
+      (needs.build.result == 'success' ||
+      (needs.build.result == 'skipped' && inputs.tag != ''))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: prod
+    permissions:
+      contents: read
+      packages: read
+    env:
+      TAG: ${{ inputs.tag || needs.build.outputs.tag }}
+      APP_DIR: /opt/elearning
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.SHA }}
+
+      - name: Configure SSH
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<EOF
+          Host vps
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/id_ed25519
+            IdentitiesOnly yes
+          EOF
+
+      # Values live only in the prod environment (secrets, and variables for
+      # what is not secret); the file is rebuilt on every deploy so changing
+      # one only needs a re-run.
+      - name: Write .env
+        env:
+          API_HOST: ${{ secrets.API_HOST }}
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+        run: |
+          : "${POSTGRES_USER:?set the POSTGRES_USER variable of the prod environment}"
+          : "${POSTGRES_DB:?set the POSTGRES_DB variable of the prod environment}"
+          umask 077
+          case $API_HOST in
+            http://*) app_url=$API_HOST ;;
+            *) app_url=https://$API_HOST ;;
+          esac
+          cat > deploy/.env <<EOF
+          IMAGE_REPO=$IMAGE
+          API_HOST=$API_HOST
+          APP_URL=$app_url
+          CORS_ORIGINS=$CORS_ORIGINS
+          JWT_SECRET=$JWT_SECRET
+          POSTGRES_USER=$POSTGRES_USER
+          POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+          POSTGRES_DB=$POSTGRES_DB
+          EOF
+
+      - name: Upload deploy files
+        run: |
+          scp -p deploy/docker-compose.prod.yml deploy/Caddyfile deploy/deploy.sh deploy/.env \
+            "vps:$APP_DIR/"
+
+      # The job token expires when the job ends; logging out afterwards keeps
+      # it off the VPS anyway. Works whether the package is public or not.
+      - name: Log in to GHCR on the VPS
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: printf '%s' "$TOKEN" | ssh vps docker login ghcr.io -u "$ACTOR" --password-stdin
+
+      - name: Deploy ${{ env.TAG }}
+        run: |
+          # Expanded here on purpose: the VPS gets the literal path and tag.
+          # shellcheck disable=SC2029
+          ssh vps "$APP_DIR/deploy.sh '$TAG'"
+
+      - name: Log out of GHCR on the VPS
+        if: always()
+        run: ssh vps docker logout ghcr.io || true

@@ -24,6 +24,7 @@
     "typeorm": "typeorm-ts-node-commonjs -d src/database/typeorm.datasource.ts",
     "db:migrate": "yarn typeorm migration:run",
     "db:migrate:revert": "yarn typeorm migration:revert",
+    "db:migrate:prod": "typeorm migration:run -d dist/database/typeorm.datasource.js",
     "db:migration:show": "yarn typeorm migration:show",
     "db:migration:create": "typeorm-ts-node-commonjs migration:create",
     "db:seed": "ts-node src/database/seeds/seed.ts"
@@ -100,7 +101,7 @@
     "testEnvironment": "node"
   },
   "engines": {
-    "node": ">=20.11"
+    "node": ">=24"
   },
   "lint-staged": {
     "*.ts": [

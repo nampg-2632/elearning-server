@@ -1,0 +1,16 @@
+# Only what the Dockerfile copies matters; keep the build context small and
+# never send local secrets to the daemon.
+.git
+.github
+.husky
+.vscode
+node_modules
+dist
+coverage
+.env
+.env.*
+!.env.example
+*.log
+Dockerfile
+docker-compose*.yml
+README.md

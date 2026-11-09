@@ -12,7 +12,10 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get<ConfigType<typeof appConfig>>(appConfig.KEY);
 
-  app.setGlobalPrefix(config.apiPrefix);
+  // Health probes stay at /health/* whatever API_PREFIX is.
+  app.setGlobalPrefix(config.apiPrefix, {
+    exclude: ['health/live', 'health/ready'],
+  });
   app.use(helmet());
   app.enableCors({
     origin: config.corsOrigins.length > 0 ? config.corsOrigins : false,

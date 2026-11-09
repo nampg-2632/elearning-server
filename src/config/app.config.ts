@@ -14,4 +14,5 @@ export const appConfig = registerAs('app', () => ({
   apiPrefix: process.env.API_PREFIX ?? 'api/v1',
   corsOrigins: parseList(process.env.CORS_ORIGINS),
   fallbackLanguage: process.env.FALLBACK_LANGUAGE ?? 'vi',
+  trustProxy: Number(process.env.TRUST_PROXY ?? 0),
 }));

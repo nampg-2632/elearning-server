@@ -48,6 +48,14 @@ class EnvironmentVariables {
   @IsEnum(['vi', 'en'])
   FALLBACK_LANGUAGE: string = 'vi';
 
+  // Reverse proxies in front of the app (Caddy in production = 1). Lets
+  // Express read the client IP from X-Forwarded-For, which the auth rate
+  // limit keys on. Keep 0 when exposed directly, or clients could spoof it.
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  TRUST_PROXY: number = 0;
+
   @IsNotEmpty()
   @IsString()
   DATABASE_URL!: string;

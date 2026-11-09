@@ -16,6 +16,9 @@ async function bootstrap() {
   app.setGlobalPrefix(config.apiPrefix, {
     exclude: ['health/live', 'health/ready'],
   });
+  if (config.trustProxy > 0) {
+    app.set('trust proxy', config.trustProxy);
+  }
   app.use(helmet());
   app.enableCors({
     origin: config.corsOrigins.length > 0 ? config.corsOrigins : false,

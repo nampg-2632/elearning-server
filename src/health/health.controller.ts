@@ -7,6 +7,7 @@ import {
 import type { Response } from 'express';
 import { Public } from '../common/decorators/public.decorator';
 import { HealthReportDto, LivenessDto } from './dto/health-report.dto';
+import { HealthStatus } from './enums/health-status.enum';
 import { HealthService } from './health.service';
 
 // Served outside API_PREFIX (see main.ts) so probes do not depend on it.
@@ -20,7 +21,7 @@ export class HealthController {
   @Get('live')
   @ApiOkResponse({ type: LivenessDto })
   live(): LivenessDto {
-    return { status: 'ok' };
+    return { status: HealthStatus.Ok };
   }
 
   // Postgres and Redis answer. Used by deploys and uptime checks.
@@ -31,7 +32,7 @@ export class HealthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<HealthReportDto> {
     const report = await this.healthService.readiness();
-    if (report.status !== 'ok') {
+    if (report.status !== HealthStatus.Ok) {
       res.status(HttpStatus.SERVICE_UNAVAILABLE);
     }
     return report;

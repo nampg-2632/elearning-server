@@ -1,23 +1,23 @@
 import { ApiProperty } from '@nestjs/swagger';
-
-export type DependencyStatus = 'up' | 'down';
+import { DependencyStatus } from '../enums/dependency-status.enum';
+import { HealthStatus } from '../enums/health-status.enum';
 
 export class LivenessDto {
-  @ApiProperty({ enum: ['ok'] })
-  status: 'ok';
+  @ApiProperty({ enum: [HealthStatus.Ok] })
+  status: HealthStatus.Ok;
 }
 
 class HealthChecksDto {
-  @ApiProperty({ enum: ['up', 'down'] })
+  @ApiProperty({ enum: DependencyStatus, enumName: 'DependencyStatus' })
   database: DependencyStatus;
 
-  @ApiProperty({ enum: ['up', 'down'] })
+  @ApiProperty({ enum: DependencyStatus, enumName: 'DependencyStatus' })
   redis: DependencyStatus;
 }
 
 export class HealthReportDto {
-  @ApiProperty({ enum: ['ok', 'error'] })
-  status: 'ok' | 'error';
+  @ApiProperty({ enum: HealthStatus, enumName: 'HealthStatus' })
+  status: HealthStatus;
 
   @ApiProperty({ type: HealthChecksDto })
   checks: HealthChecksDto;

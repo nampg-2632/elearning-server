@@ -1,5 +1,7 @@
 import type { DataSource } from 'typeorm';
 import type { RedisService } from '../redis/redis.service';
+import { DependencyStatus } from './enums/dependency-status.enum';
+import { HealthStatus } from './enums/health-status.enum';
 import { CHECK_TIMEOUT_MS, HealthService } from './health.service';
 
 describe('HealthService.readiness', () => {
@@ -22,8 +24,8 @@ describe('HealthService.readiness', () => {
 
   it('reports ok when Postgres and Redis answer', async () => {
     await expect(service.readiness()).resolves.toEqual({
-      status: 'ok',
-      checks: { database: 'up', redis: 'up' },
+      status: HealthStatus.Ok,
+      checks: { database: DependencyStatus.Up, redis: DependencyStatus.Up },
     });
     expect(dataSource.query).toHaveBeenCalledWith('SELECT 1');
   });
@@ -32,8 +34,8 @@ describe('HealthService.readiness', () => {
     dataSource.query.mockRejectedValue(new Error('connection refused'));
 
     await expect(service.readiness()).resolves.toEqual({
-      status: 'error',
-      checks: { database: 'down', redis: 'up' },
+      status: HealthStatus.Error,
+      checks: { database: DependencyStatus.Down, redis: DependencyStatus.Up },
     });
   });
 
@@ -45,8 +47,8 @@ describe('HealthService.readiness', () => {
     await jest.advanceTimersByTimeAsync(CHECK_TIMEOUT_MS);
 
     await expect(report).resolves.toEqual({
-      status: 'error',
-      checks: { database: 'up', redis: 'down' },
+      status: HealthStatus.Error,
+      checks: { database: DependencyStatus.Up, redis: DependencyStatus.Down },
     });
   });
 });

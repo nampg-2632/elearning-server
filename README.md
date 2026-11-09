@@ -143,8 +143,8 @@ khởi động lại.
 
 ## Deploy lên VPS
 
-Mỗi lần push `main`, workflow `.github/workflows/release.yml` build image `linux/amd64`, đẩy lên
-GHCR (`ghcr.io/nampg-2632/elearning-server`, tag `sha-<7 ký tự>` và `latest`, giữ 5 bản gần nhất)
+Mỗi lần push `main`, sau khi CI trên commit đó pass, workflow `.github/workflows/release.yml` build
+image `linux/amd64` từ đúng commit CI đã kiểm tra, đẩy lên GHCR (`ghcr.io/nampg-2632/elearning-server`, tag `sha-<7 ký tự>` và `latest`, giữ 5 bản gần nhất)
 rồi SSH vào VPS chạy `deploy/deploy.sh`:
 
 1. pull image mới;
@@ -290,4 +290,5 @@ GitHub Actions (`.github/workflows/ci.yml`) chạy khi mở PR vào `main` và k
   `/health/ready` rồi gọi thử đăng ký (kiểm tra `argon2` chạy được trong image).
 - **Commit messages:** commitlint các commit trong PR.
 
-Deploy chạy ở workflow riêng `release.yml`, xem [Deploy lên VPS](#deploy-lên-vps).
+Deploy chạy ở workflow riêng `release.yml`, chỉ bắt đầu khi CI trên `main` pass (CI lỗi hoặc bị huỷ
+thì không deploy), xem [Deploy lên VPS](#deploy-lên-vps).

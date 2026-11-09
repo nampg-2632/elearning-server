@@ -1,10 +1,16 @@
 name: Release
+run-name: Release ${{ inputs.tag || github.event.workflow_run.display_title || github.ref_name }}
 
-# Every push to main is built, pushed to GHCR and deployed to the VPS. Run it
-# by hand with a tag (e.g. sha-1a2b3c4) to redeploy or roll back to an image
-# that is already in GHCR.
+# Runs after CI passes on a push to main: builds the commit CI tested, pushes
+# it to GHCR and deploys it to the VPS. Run it by hand with a tag (e.g.
+# sha-1a2b3c4) to redeploy or roll back to an image already in GHCR, or
+# without one to build and deploy the selected branch.
+#
+# workflow_run only fires for the copy of this file on main.
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
     inputs:
@@ -19,11 +25,17 @@ concurrency:
 
 env:
   IMAGE: ghcr.io/${{ github.repository }}
+  # The commit CI tested; github.sha would be the latest commit on main.
+  SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
   build:
     name: Build and push image
-    if: ${{ !inputs.tag }}
+    # CI on main can also come from a pull_request run; only pushes deploy.
+    if: >-
+      (github.event_name == 'workflow_dispatch' && !inputs.tag) ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -33,10 +45,12 @@ jobs:
       tag: ${{ steps.tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.SHA }}
 
       - name: Image tag
         id: tag
-        run: echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+        run: echo "tag=sha-${SHA::7}" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v3
 
@@ -71,8 +85,11 @@ jobs:
   deploy:
     name: Deploy to VPS
     needs: build
-    # Also runs when build is skipped (manual run with a tag).
-    if: ${{ !cancelled() && !failure() }}
+    # After a build, or on its own for a manual run with a tag.
+    if: >-
+      !cancelled() &&
+      (needs.build.result == 'success' ||
+      (needs.build.result == 'skipped' && inputs.tag != ''))
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: prod
@@ -84,6 +101,8 @@ jobs:
       APP_DIR: /opt/elearning
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.SHA }}
 
       - name: Configure SSH
         env:

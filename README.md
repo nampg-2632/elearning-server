@@ -151,7 +151,8 @@ rồi SSH vào VPS chạy `deploy/deploy.sh`:
 2. bật Postgres, Redis;
 3. chạy migration bằng image mới;
 4. khởi động app mới, chờ `/health/ready`. Nếu không ready trong 90 giây thì bật lại image trước
-   đó và job báo lỗi.
+   đó và job báo lỗi;
+5. xoá image cũ trên VPS, chỉ giữ bản đang chạy và bản trước đó (để rollback).
 
 Trên VPS (`/opt/elearning`) chạy `deploy/docker-compose.prod.yml`: app, PostgreSQL, Redis và Caddy
 (HTTPS tự động). Chỉ Caddy mở cổng 80/443. File `.env` trên VPS được ghi lại mỗi lần deploy từ
@@ -198,13 +199,30 @@ với bản đang chạy: thêm bảng/cột thì được, xoá hoặc đổi t
 Actions → **Release** → **Run workflow**, nhập tag cũ (ví dụ `sha-1a2b3c4`, xem trong Packages)
 để deploy lại image đó mà không build. Để trống tag thì build và deploy branch đang chọn.
 
-Xem log trên VPS:
+### Thao tác trên VPS
+
+`deploy.sh` ghi tag đang chạy vào `.env` (`IMAGE_TAG`), nên gõ `docker compose` trực tiếp được:
 
 ```bash
 ssh deploy@<IP>
 cd /opt/elearning
+docker compose -f docker-compose.prod.yml ps
 docker compose -f docker-compose.prod.yml logs -f app
+docker compose -f docker-compose.prod.yml exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 ```
+
+### Tạo admin
+
+Production không chạy seed nên không có sẵn admin. Đăng ký tài khoản qua
+`POST /api/v1/auth/register` như user thường, rồi nâng quyền trên VPS:
+
+```bash
+echo "UPDATE users SET role = 'admin' WHERE lower(email) = lower('you@example.com');" |
+  docker compose -f docker-compose.prod.yml exec -T postgres \
+  sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+```
+
+`UPDATE 1` là xong. Quyền có hiệu lực ngay, không cần đăng nhập lại (role đọc từ DB mỗi request).
 
 ## Biến môi trường
 

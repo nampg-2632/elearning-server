@@ -11,6 +11,7 @@ import { UserResponseDto } from '../users/dto/user-response.dto';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { AuthResponseDto } from './dto/auth-response.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { blacklistKey, JwtPayload } from './jwt-payload';
@@ -81,14 +82,51 @@ export class AuthService {
     }
   }
 
+  // Signs out every session of the user (token_version is bumped), including
+  // the one making the request, and returns a fresh token for it.
+  async changePassword(
+    user: User,
+    dto: ChangePasswordDto,
+  ): Promise<AuthResponseDto> {
+    const oldHash = await this.usersService.findPasswordHash(user.id);
+    if (!oldHash || !(await verifyPassword(oldHash, dto.currentPassword))) {
+      throw this.invalidCurrentPassword();
+    }
+
+    const tokenVersion = await this.usersService.replacePassword(
+      user.id,
+      oldHash,
+      await hashPassword(dto.newPassword),
+    );
+    if (tokenVersion === null) {
+      // Changed by a concurrent request: the current password is stale.
+      throw this.invalidCurrentPassword();
+    }
+
+    user.tokenVersion = tokenVersion;
+    return this.issueToken(user);
+  }
+
   private async issueToken(user: User): Promise<AuthResponseDto> {
-    const payload: JwtPayload = { sub: user.id, role: user.role };
+    const payload: JwtPayload = {
+      sub: user.id,
+      role: user.role,
+      tv: user.tokenVersion,
+    };
     const accessToken = await this.jwtService.signAsync(payload);
     return {
       accessToken,
       expiresIn: this.config.jwtExpiresInSeconds,
       user: UserResponseDto.fromEntity(user),
     };
+  }
+
+  private invalidCurrentPassword(): AppException {
+    return new AppException({
+      code: ErrorCode.InvalidCurrentPassword,
+      messageKey: 'errors.INVALID_CURRENT_PASSWORD',
+      status: HttpStatus.BAD_REQUEST,
+    });
   }
 
   private emailAlreadyExists(): AppException {

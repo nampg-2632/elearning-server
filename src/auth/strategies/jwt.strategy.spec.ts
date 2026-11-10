@@ -12,8 +12,12 @@ describe('JwtStrategy', () => {
   const request = {
     headers: { authorization: `Bearer ${token}` },
   } as Request;
-  const payload = { sub: 'u1', role: UserRole.User };
-  const user = Object.assign(new User(), { id: 'u1', role: UserRole.User });
+  const payload = { sub: 'u1', role: UserRole.User, tv: 2 };
+  const user = Object.assign(new User(), {
+    id: 'u1',
+    role: UserRole.User,
+    tokenVersion: 2,
+  });
 
   let strategy: JwtStrategy;
   let redis: jest.Mocked<Pick<RedisService, 'exists'>>;
@@ -47,6 +51,27 @@ describe('JwtStrategy', () => {
     usersService.findById.mockResolvedValue(null);
 
     await expect(strategy.validate(request, payload)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+  });
+
+  it('rejects a token issued before the last password change', async () => {
+    await expect(
+      strategy.validate(request, { ...payload, tv: 1 }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('treats a token without tv as version 0', async () => {
+    const legacy = { sub: 'u1', role: UserRole.User };
+    usersService.findById.mockResolvedValue(
+      Object.assign(new User(), { ...user, tokenVersion: 0 }),
+    );
+    await expect(strategy.validate(request, legacy)).resolves.toMatchObject({
+      id: 'u1',
+    });
+
+    usersService.findById.mockResolvedValue(user);
+    await expect(strategy.validate(request, legacy)).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
   });

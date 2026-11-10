@@ -7,6 +7,7 @@ import { authConfig } from '../config/auth.config';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { ProfileController } from './profile.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
 @Module({
@@ -27,7 +28,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     // (login). Limits are set per route with @Throttle().
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, ProfileController],
   providers: [AuthService, JwtStrategy],
 })
 export class AuthModule {}

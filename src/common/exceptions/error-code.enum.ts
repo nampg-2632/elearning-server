@@ -13,6 +13,7 @@ export enum ErrorCode {
   // Auth
   EmailAlreadyExists = 'EMAIL_ALREADY_EXISTS',
   InvalidCredentials = 'INVALID_CREDENTIALS',
+  InvalidCurrentPassword = 'INVALID_CURRENT_PASSWORD',
 
   // Courses & lessons
   CourseNotFound = 'COURSE_NOT_FOUND',

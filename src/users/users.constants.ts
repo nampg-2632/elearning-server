@@ -1,1 +1,2 @@
 export const USER_FULL_NAME_MAX_LENGTH = 100;
+export const USER_AVATAR_URL_MAX_LENGTH = 2048;

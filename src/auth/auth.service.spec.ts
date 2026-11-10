@@ -21,6 +21,7 @@ const buildUser = (overrides: Partial<User> = {}): User =>
     fullName: 'Nam',
     avatarUrl: null,
     role: UserRole.User,
+    tokenVersion: 0,
     createdAt: new Date('2026-10-21T03:00:00.000Z'),
     updatedAt: new Date('2026-10-21T03:00:00.000Z'),
     ...overrides,
@@ -41,7 +42,14 @@ describe('AuthService', () => {
   let service: AuthService;
   let jwtService: JwtService;
   let usersService: jest.Mocked<
-    Pick<UsersService, 'existsByEmail' | 'create' | 'findByEmailWithPassword'>
+    Pick<
+      UsersService,
+      | 'existsByEmail'
+      | 'create'
+      | 'findByEmailWithPassword'
+      | 'findPasswordHash'
+      | 'replacePassword'
+    >
   >;
   let redis: jest.Mocked<Pick<RedisService, 'set'>>;
 
@@ -54,6 +62,8 @@ describe('AuthService', () => {
       existsByEmail: jest.fn(),
       create: jest.fn(),
       findByEmailWithPassword: jest.fn(),
+      findPasswordHash: jest.fn(),
+      replacePassword: jest.fn(),
     };
     redis = { set: jest.fn() };
     service = new AuthService(
@@ -125,6 +135,7 @@ describe('AuthService', () => {
       });
 
       expect(result.user.email).toBe('nam@example.com');
+      expect(jwtService.verify<JwtPayload>(result.accessToken).tv).toBe(0);
       expect(result.user).not.toHaveProperty('passwordHash');
     });
 
@@ -177,6 +188,53 @@ describe('AuthService', () => {
       await service.logout(token);
 
       expect(redis.set).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('changePassword', () => {
+    const dto = { currentPassword: 'Secret123', newPassword: 'NewSecret456' };
+
+    beforeEach(async () => {
+      usersService.findPasswordHash.mockResolvedValue(
+        await hashPassword('Secret123'),
+      );
+      usersService.replacePassword.mockResolvedValue(1);
+    });
+
+    it('stores the new hash and returns a token with the bumped version', async () => {
+      const user = buildUser({ tokenVersion: 0 });
+
+      const result = await service.changePassword(user, dto);
+
+      const [id, oldHash, newHash] = usersService.replacePassword.mock.calls[0];
+      expect(id).toBe(user.id);
+      expect(await verifyPassword(oldHash, 'Secret123')).toBe(true);
+      expect(await verifyPassword(newHash, 'NewSecret456')).toBe(true);
+      const payload = jwtService.verify<JwtPayload>(result.accessToken);
+      expect(payload).toMatchObject({ sub: user.id, tv: 1 });
+      expect(result.user).not.toHaveProperty('tokenVersion');
+    });
+
+    it('rejects a wrong current password without changing anything', async () => {
+      await expectAppError(
+        service.changePassword(buildUser(), {
+          ...dto,
+          currentPassword: 'Wrong1234',
+        }),
+        ErrorCode.InvalidCurrentPassword,
+        HttpStatus.BAD_REQUEST,
+      );
+      expect(usersService.replacePassword).not.toHaveBeenCalled();
+    });
+
+    it('rejects when a concurrent change replaced the hash first', async () => {
+      usersService.replacePassword.mockResolvedValue(null);
+
+      await expectAppError(
+        service.changePassword(buildUser(), dto),
+        ErrorCode.InvalidCurrentPassword,
+        HttpStatus.BAD_REQUEST,
+      );
     });
   });
 });

@@ -134,9 +134,21 @@ jobs:
           POSTGRES_USER: ${{ vars.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+          # relay = log in to the SMTP server of a mail host (MAIL_HOST...);
+          # direct = the Postfix container delivers itself (profile mta).
+          MAIL_MODE: ${{ vars.MAIL_MODE }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+          MAIL_HOST: ${{ secrets.MAIL_HOST }}
+          MAIL_PORT: ${{ vars.MAIL_PORT }}
+          MAIL_SECURE: ${{ vars.MAIL_SECURE }}
+          MAIL_USER: ${{ secrets.MAIL_USER }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          MAIL_HOSTNAME: ${{ secrets.MAIL_HOSTNAME }}
+          MAIL_RATE_PER_HOUR: ${{ vars.MAIL_RATE_PER_HOUR }}
         run: |
           : "${POSTGRES_USER:?set the POSTGRES_USER variable of the prod environment}"
           : "${POSTGRES_DB:?set the POSTGRES_DB variable of the prod environment}"
+          : "${MAIL_FROM:?set the MAIL_FROM secret of the prod environment}"
           umask 077
           case $API_HOST in
             http://*) app_url=$API_HOST ;;
@@ -151,7 +163,41 @@ jobs:
           POSTGRES_USER=$POSTGRES_USER
           POSTGRES_PASSWORD=$POSTGRES_PASSWORD
           POSTGRES_DB=$POSTGRES_DB
+          MAIL_FROM='$MAIL_FROM'
+          MAIL_RATE_PER_HOUR=${MAIL_RATE_PER_HOUR:-0}
           EOF
+          # Single quotes keep compose from expanding $ in passwords.
+          case ${MAIL_MODE:-relay} in
+            relay)
+              : "${MAIL_HOST:?set the MAIL_HOST secret of the prod environment}"
+              cat >> deploy/.env <<EOF
+          MAIL_HOST=$MAIL_HOST
+          MAIL_PORT=${MAIL_PORT:-465}
+          MAIL_SECURE=${MAIL_SECURE:-true}
+          MAIL_USER='$MAIL_USER'
+          MAIL_PASSWORD='$MAIL_PASSWORD'
+          EOF
+              ;;
+            direct)
+              # DKIM signs for the domain of MAIL_FROM. The hostname must
+              # have a PTR record pointing back to it (defaults to API_HOST).
+              mail_domain=${MAIL_FROM##*@}
+              mail_domain=${mail_domain%%>*}
+              mail_hostname=${MAIL_HOSTNAME:-${API_HOST#*://}}
+              cat >> deploy/.env <<EOF
+          COMPOSE_PROFILES=mta
+          MAIL_HOST=postfix
+          MAIL_PORT=587
+          MAIL_SECURE=false
+          MAIL_DOMAIN=$mail_domain
+          MAIL_HOSTNAME=$mail_hostname
+          EOF
+              ;;
+            *)
+              echo "::error::MAIL_MODE must be relay or direct, got '$MAIL_MODE'"
+              exit 1
+              ;;
+          esac
 
       - name: Upload deploy files
         run: |

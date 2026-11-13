@@ -7,17 +7,13 @@ import {
 } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { createClient } from 'redis';
+import { describeError } from '../common/utils/describe-error';
 import { redisConfig } from '../config/redis.config';
 
 type RedisClient = ReturnType<typeof createClient>;
 
 const STARTUP_MAX_RETRIES = 5;
 const MAX_RECONNECT_DELAY_MS = 3000;
-
-// ECONNREFUSED on dual-stack hosts arrives as an AggregateError with an
-// empty message, so fall back to the error code/name.
-const describeError = (error: Error & { code?: string }): string =>
-  error.message || error.code || error.name;
 
 // Thin wrapper over node-redis. Every key is namespaced with
 // REDIS_KEY_PREFIX, so callers pass bare keys like "auth:blacklist:<hash>".

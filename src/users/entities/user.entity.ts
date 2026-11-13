@@ -24,4 +24,8 @@ export class User extends AppBaseEntity {
     default: UserRole.User,
   })
   role: UserRole;
+
+  // Carried in the JWT (`tv`); bumping it revokes every issued token.
+  @Column({ type: 'int', default: 0 })
+  tokenVersion: number;
 }

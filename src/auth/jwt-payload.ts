@@ -6,6 +6,9 @@ import type { UserRole } from '../common/enums/user-role.enum';
 export type JwtPayload = {
   sub: string;
   role: UserRole;
+  // users.token_version at signing time. Missing in tokens issued before
+  // the column existed, which counts as 0.
+  tv?: number;
   iat?: number;
   exp?: number;
 };

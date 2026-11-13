@@ -81,9 +81,15 @@ jobs:
           docker exec -e PGUSER -e PGDATABASE "$PG_CONTAINER" pg_dump --schema-only \
             | grep -vE '^\\(un)?restrict ' > schema-1.sql
 
-      - name: Revert leaves an empty schema
+      - name: Reverting every migration leaves an empty schema
         run: |
-          yarn db:migrate:revert
+          # migration:revert undoes only the last one, so revert once per
+          # executed migration.
+          count=$(docker exec -e PGUSER -e PGDATABASE "$PG_CONTAINER" psql -tAc \
+            "SELECT count(*) FROM typeorm_migrations")
+          for _ in $(seq "$count"); do
+            yarn db:migrate:revert
+          done
           tables=$(docker exec -e PGUSER -e PGDATABASE "$PG_CONTAINER" psql -tAc \
             "SELECT string_agg(tablename, ', ') FROM pg_tables
              WHERE schemaname = 'public' AND tablename <> 'typeorm_migrations'")

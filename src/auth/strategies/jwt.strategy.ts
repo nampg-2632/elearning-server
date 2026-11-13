@@ -9,8 +9,8 @@ import { User } from '../../users/entities/user.entity';
 import { UsersService } from '../../users/users.service';
 import { blacklistKey, extractBearerToken, JwtPayload } from '../jwt-payload';
 
-// Verifies signature/expiry (passport-jwt), then rejects logged-out tokens
-// and users that no longer exist. The returned user becomes request.user.
+// Verifies signature/expiry (passport-jwt), then rejects logged-out tokens,
+// users that no longer exist and tokens from before a password change. The returned user becomes request.user.
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
@@ -34,7 +34,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     const user = await this.usersService.findById(payload.sub);
-    if (!user) {
+    if (!user || (payload.tv ?? 0) !== user.tokenVersion) {
       throw new UnauthorizedException();
     }
     return user;

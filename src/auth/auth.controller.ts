@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Get,
   HttpCode,
   HttpStatus,
   Post,
@@ -17,11 +16,8 @@ import {
 } from '@nestjs/swagger';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Request } from 'express';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { SWAGGER_BEARER_AUTH } from '../config/swagger';
-import { UserResponseDto } from '../users/dto/user-response.dto';
-import { User } from '../users/entities/user.entity';
 import { AuthService } from './auth.service';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
@@ -61,12 +57,5 @@ export class AuthController {
   async logout(@Req() request: Request): Promise<void> {
     // The global guard already validated this token, so it is present.
     await this.authService.logout(extractBearerToken(request)!);
-  }
-
-  @Get('me')
-  @ApiBearerAuth(SWAGGER_BEARER_AUTH)
-  @ApiOkResponse({ type: UserResponseDto })
-  me(@CurrentUser() user: User): UserResponseDto {
-    return UserResponseDto.fromEntity(user);
   }
 }

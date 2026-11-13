@@ -136,11 +136,20 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      mailpit:
+        image: axllent/mailpit:v1.33
+        ports:
+          - 1025:1025
+          - 8025:8025
     env:
       PGUSER: *pg_user
       PGPASSWORD: *pg_password
       PGDATABASE: *pg_database
       IMAGE: elearning-server:ci
+      # Production requires both; Mailpit stands in for the SMTP server.
+      MAIL_HOST: localhost
+      MAIL_PORT: 1025
+      MAIL_FROM: e-Learning <no-reply@elearning.local>
     steps:
       - uses: actions/checkout@v5
 
@@ -168,6 +177,7 @@ jobs:
           docker run -d --name app --network host \
             -e DATABASE_URL -e REDIS_URL=redis://localhost:6379 \
             -e JWT_SECRET=ci-only-secret-not-used-anywhere-else \
+            -e MAIL_HOST -e MAIL_PORT -e MAIL_FROM \
             "$IMAGE"
           for _ in $(seq 1 30); do
             curl -sf http://localhost:3000/health/ready && exit 0
@@ -188,6 +198,25 @@ jobs:
             echo "::error::Register returned $status"
             exit 1
           fi
+
+      # Mailpit must get the welcome mail of the smoke test (queue, worker
+      # and templates in the image) and the one of the script the VPS uses
+      # to check a mail setup.
+      - name: Check mail
+        run: |
+          docker run --rm --network host -e MAIL_HOST -e MAIL_PORT -e MAIL_FROM \
+            "$IMAGE" yarn mail:test:prod smoke@elearning.local
+          for _ in $(seq 1 10); do
+            subjects=$(curl -s http://localhost:8025/api/v1/messages | jq -r '.messages[].Subject')
+            if grep -q 'Welcome to e-Learning' <<<"$subjects" &&
+              grep -q 'test mail' <<<"$subjects"; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::Mailpit is missing a mail; it has:"
+          echo "$subjects"
+          exit 1
 
       - name: App logs
         if: always()

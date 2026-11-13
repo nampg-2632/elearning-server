@@ -11,6 +11,7 @@ import {
   Max,
   Min,
   MinLength,
+  ValidateIf,
   validateSync,
 } from 'class-validator';
 
@@ -84,6 +85,50 @@ class EnvironmentVariables {
   @IsInt()
   @Min(60)
   JWT_EXPIRES_IN_SECONDS: number = 86400;
+
+  // Development falls back to Mailpit on localhost:1025; production must say
+  // where mail goes, or every mail would fail in the background.
+  @ValidateIf(
+    (env: EnvironmentVariables) =>
+      env.NODE_ENV === NodeEnv.Production || env.MAIL_HOST !== undefined,
+  )
+  @IsNotEmpty()
+  @IsString()
+  MAIL_HOST?: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(65535)
+  MAIL_PORT: number = 1025;
+
+  @IsBooleanString()
+  MAIL_SECURE: string = 'false';
+
+  // Both empty when the server takes mail without a login (Mailpit, the
+  // Postfix container on the VPS).
+  @IsOptional()
+  @IsString()
+  MAIL_USER?: string;
+
+  @IsOptional()
+  @IsString()
+  MAIL_PASSWORD?: string;
+
+  // e.g. e-Learning <no-reply@example.com>
+  @ValidateIf(
+    (env: EnvironmentVariables) =>
+      env.NODE_ENV === NodeEnv.Production || env.MAIL_FROM !== undefined,
+  )
+  @IsNotEmpty()
+  @IsString()
+  MAIL_FROM?: string;
+
+  // Mails per hour across every app instance; 0 = no limit.
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  MAIL_RATE_PER_HOUR: number = 0;
 }
 
 // Used by ConfigModule.forRoot({ validate }): the app refuses to boot with a

@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { authConfig } from '../config/auth.config';
+import { MailModule } from '../mail/mail.module';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -13,6 +14,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 @Module({
   imports: [
     UsersModule,
+    MailModule,
     PassportModule,
     JwtModule.registerAsync({
       inject: [authConfig.KEY],
@@ -25,7 +27,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
       }),
     }),
     // In-memory counters, only applied where ThrottlerGuard is used
-    // (login). Limits are set per route with @Throttle().
+    // (register, login). Limits are set per route with @Throttle().
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
   ],
   controllers: [AuthController, ProfileController],

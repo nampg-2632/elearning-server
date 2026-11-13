@@ -5,6 +5,8 @@ import { paginate, Paginated } from '../common/dto/paginated-response';
 import { AppException } from '../common/exceptions/app.exception';
 import { ErrorCode } from '../common/exceptions/error-code.enum';
 import { containsPattern } from '../common/utils/sql';
+import { MailTemplate } from '../mail/enums/mail-template.enum';
+import { MailService } from '../mail/mail.service';
 import type { User } from '../users/entities/user.entity';
 import { AdminUserCourseDto } from './dto/admin-user-course.dto';
 import { ListUserCoursesQueryDto } from './dto/list-user-courses-query.dto';
@@ -21,6 +23,11 @@ type ReviewChanges = Pick<
   'status' | 'reviewedBy' | 'reviewedAt' | 'rejectReason'
 >;
 
+interface ReviewResult {
+  userCourse: AdminUserCourseDto;
+  previousStatus: EnrollmentStatus;
+}
+
 // Enrollments of soft-deleted courses are hidden and cannot be reviewed:
 // TypeORM adds `deleted_at IS NULL` to the inner join on course.
 @Injectable()
@@ -28,6 +35,7 @@ export class AdminUserCoursesService {
   constructor(
     @InjectRepository(UserCourse)
     private readonly userCourses: Repository<UserCourse>,
+    private readonly mail: MailService,
   ) {}
 
   async list(
@@ -59,61 +67,92 @@ export class AdminUserCoursesService {
     return paginate(userCourses.map(this.toDto), total, query);
   }
 
-  approve(id: string, admin: User): Promise<AdminUserCourseDto> {
-    return this.review(id, APPROVABLE_STATUSES, {
+  async approve(id: string, admin: User): Promise<AdminUserCourseDto> {
+    const { userCourse } = await this.review(id, APPROVABLE_STATUSES, {
       status: EnrollmentStatus.Approved,
       reviewedBy: admin.id,
       reviewedAt: new Date(),
       rejectReason: null,
     });
+    await this.mail.send({
+      to: userCourse.user.email,
+      template: MailTemplate.CourseApproved,
+      context: {
+        fullName: userCourse.user.fullName,
+        courseName: userCourse.course.name,
+      },
+    });
+    return userCourse;
   }
 
   // From pending this rejects the request; from approved it revokes access.
   // Lesson progress is kept either way.
-  reject(
+  async reject(
     id: string,
     admin: User,
     reason?: string | null,
   ): Promise<AdminUserCourseDto> {
-    return this.review(id, REJECTABLE_STATUSES, {
-      status: EnrollmentStatus.Rejected,
-      reviewedBy: admin.id,
-      reviewedAt: new Date(),
-      rejectReason: reason || null,
+    const { userCourse, previousStatus } = await this.review(
+      id,
+      REJECTABLE_STATUSES,
+      {
+        status: EnrollmentStatus.Rejected,
+        reviewedBy: admin.id,
+        reviewedAt: new Date(),
+        rejectReason: reason || null,
+      },
+    );
+    await this.mail.send({
+      to: userCourse.user.email,
+      template:
+        previousStatus === EnrollmentStatus.Approved
+          ? MailTemplate.CourseRevoked
+          : MailTemplate.CourseRejected,
+      context: {
+        fullName: userCourse.user.fullName,
+        courseName: userCourse.course.name,
+        reason: userCourse.rejectReason,
+      },
     });
+    return userCourse;
   }
 
   private async review(
     id: string,
     allowedFrom: EnrollmentStatus[],
     changes: ReviewChanges,
-  ): Promise<AdminUserCourseDto> {
-    await this.userCourses.manager.transaction(async (manager) => {
-      // Row lock so two admins reviewing the same enrollment are applied
-      // one after the other and the second sees the new status.
-      const userCourse = await manager
-        .createQueryBuilder(UserCourse, 'uc')
-        .innerJoin('uc.course', 'course')
-        .where('uc.id = :id', { id })
-        .setLock('pessimistic_write', undefined, ['uc'])
-        .getOne();
-      if (!userCourse) {
-        throw this.userCourseNotFound();
-      }
-      if (!allowedFrom.includes(userCourse.status)) {
-        throw new AppException({
-          code: ErrorCode.InvalidEnrollmentStatus,
-          messageKey: 'errors.INVALID_ENROLLMENT_STATUS',
-          status: HttpStatus.CONFLICT,
-        });
-      }
-      await manager.update(UserCourse, { id }, changes);
-    });
+  ): Promise<ReviewResult> {
+    // Mail is sent by the caller once this resolves, i.e. after the commit,
+    // so a rolled back review never mails the student.
+    const previousStatus = await this.userCourses.manager.transaction(
+      async (manager) => {
+        // Row lock so two admins reviewing the same enrollment are applied
+        // one after the other and the second sees the new status.
+        const userCourse = await manager
+          .createQueryBuilder(UserCourse, 'uc')
+          .innerJoin('uc.course', 'course')
+          .where('uc.id = :id', { id })
+          .setLock('pessimistic_write', undefined, ['uc'])
+          .getOne();
+        if (!userCourse) {
+          throw this.userCourseNotFound();
+        }
+        if (!allowedFrom.includes(userCourse.status)) {
+          throw new AppException({
+            code: ErrorCode.InvalidEnrollmentStatus,
+            messageKey: 'errors.INVALID_ENROLLMENT_STATUS',
+            status: HttpStatus.CONFLICT,
+          });
+        }
+        await manager.update(UserCourse, { id }, changes);
+        return userCourse.status;
+      },
+    );
 
     const userCourse = await this.itemQuery()
       .where('uc.id = :id', { id })
       .getOneOrFail();
-    return this.toDto(userCourse);
+    return { userCourse: this.toDto(userCourse), previousStatus };
   }
 
   private itemQuery(): SelectQueryBuilder<UserCourse> {

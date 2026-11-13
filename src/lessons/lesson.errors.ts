@@ -8,3 +8,11 @@ export const lessonNotFound = (): AppException =>
     messageKey: 'errors.LESSON_NOT_FOUND',
     status: HttpStatus.NOT_FOUND,
   });
+
+// The lesson still belongs to a course that is not deleted.
+export const lessonInUse = (): AppException =>
+  new AppException({
+    code: ErrorCode.LessonInUse,
+    messageKey: 'errors.LESSON_IN_USE',
+    status: HttpStatus.CONFLICT,
+  });

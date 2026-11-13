@@ -21,6 +21,7 @@ import { LessonDetailDto, LessonTestSummaryDto } from './dto/lesson-detail.dto';
 import { ListLessonsQueryDto } from './dto/list-lessons-query.dto';
 import { LessonSummaryDto } from './dto/lesson-summary.dto';
 import { Lesson } from './entities/lesson.entity';
+import { lessonNotFound } from './lesson.errors';
 import { addLessonSummarySelect } from './lesson-summary.query';
 
 @Injectable()
@@ -62,11 +63,7 @@ export class LessonsService {
     const repository = manager?.getRepository(Lesson) ?? this.lessons;
     const found = await repository.countBy({ id: In(ids) });
     if (found !== ids.length) {
-      throw new AppException({
-        code: ErrorCode.LessonNotFound,
-        messageKey: 'errors.LESSON_NOT_FOUND',
-        status: HttpStatus.NOT_FOUND,
-      });
+      throw lessonNotFound();
     }
   }
 
@@ -104,11 +101,7 @@ export class LessonsService {
   async findDetail(user: User, id: string): Promise<LessonDetailDto> {
     const lesson = await this.lessons.findOneBy({ id });
     if (!lesson) {
-      throw new AppException({
-        code: ErrorCode.LessonNotFound,
-        messageKey: 'errors.LESSON_NOT_FOUND',
-        status: HttpStatus.NOT_FOUND,
-      });
+      throw lessonNotFound();
     }
     await this.assertAccessible(user.id, id);
 

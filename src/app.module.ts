@@ -1,3 +1,4 @@
+import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule, type ConfigType } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
@@ -17,6 +18,7 @@ import { RolesGuard } from './common/guards/roles.guard';
 import { appConfig } from './config/app.config';
 import { authConfig } from './config/auth.config';
 import { databaseConfig } from './config/database.config';
+import { mailConfig } from './config/mail.config';
 import { redisConfig } from './config/redis.config';
 import { validateEnv } from './config/env.validation';
 import { CoursesModule } from './courses/courses.module';
@@ -24,7 +26,9 @@ import { DatabaseModule } from './database/database.module';
 import { EnrollmentsModule } from './enrollments/enrollments.module';
 import { HealthModule } from './health/health.module';
 import { LessonsModule } from './lessons/lessons.module';
+import { MailModule } from './mail/mail.module';
 import { ProgressModule } from './progress/progress.module';
+import { parseRedisUrl } from './redis/redis-url';
 import { RedisModule } from './redis/redis.module';
 import { TestsModule } from './tests/tests.module';
 import { UsersModule } from './users/users.module';
@@ -36,7 +40,7 @@ import { WordsModule } from './words/words.module';
       isGlobal: true,
       cache: true,
       envFilePath: ['.env.local', '.env'],
-      load: [appConfig, authConfig, databaseConfig, redisConfig],
+      load: [appConfig, authConfig, databaseConfig, mailConfig, redisConfig],
       validate: validateEnv,
     }),
     // Language is resolved per request: ?lang=en, then the x-lang header,
@@ -59,6 +63,16 @@ import { WordsModule } from './words/words.module';
     }),
     DatabaseModule,
     RedisModule,
+    // Queues share the app's Redis; their keys sit under
+    // <REDIS_KEY_PREFIX>bull:<queue>.
+    BullModule.forRootAsync({
+      inject: [redisConfig.KEY],
+      useFactory: (config: ConfigType<typeof redisConfig>) => ({
+        connection: parseRedisUrl(config.url),
+        prefix: `${config.keyPrefix}bull`,
+      }),
+    }),
+    MailModule,
     AuthModule,
     UsersModule,
     CoursesModule,

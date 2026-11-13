@@ -60,6 +60,32 @@ services:
     mem_limit: 256m
     logging: *logging
 
+  # Direct mail mode only (COMPOSE_PROFILES=mta, set when MAIL_MODE=direct):
+  # the app hands mail to this Postfix over the internal network, without
+  # login or TLS, and Postfix signs it with DKIM and delivers it to the
+  # recipient's MX on port 25. Needs outbound 25 open at the VPS provider,
+  # a PTR record for MAIL_HOSTNAME, and SPF/DKIM/DMARC for MAIL_DOMAIN (see
+  # README). Nothing is published: it only accepts mail from private networks.
+  postfix:
+    image: boky/postfix:v5.2.1
+    profiles: [mta]
+    restart: unless-stopped
+    environment:
+      ALLOWED_SENDER_DOMAINS: ${MAIL_DOMAIN:-}
+      POSTFIX_myhostname: ${MAIL_HOSTNAME:-}
+      DKIM_BACKEND: opendkim
+      DKIM_AUTOGENERATE: 'true'
+      DKIM_SELECTOR: mail
+      # Internal network only; the app connects without STARTTLS.
+      POSTFIX_smtpd_tls_security_level: none
+    volumes:
+      # The DKIM key published in DNS; losing it means publishing a new one.
+      - postfix-dkim:/etc/opendkim/keys
+      # Mail waiting for a retry survives restarts.
+      - postfix-spool:/var/spool/postfix
+    mem_limit: 128m
+    logging: *logging
+
   # HTTPS termination; gets and renews the certificate for API_HOST itself.
   caddy:
     image: caddy:2
@@ -84,3 +110,5 @@ volumes:
   redis-data:
   caddy-data:
   caddy-config:
+  postfix-dkim:
+  postfix-spool:

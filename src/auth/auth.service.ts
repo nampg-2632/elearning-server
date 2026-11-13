@@ -6,6 +6,8 @@ import { AppException } from '../common/exceptions/app.exception';
 import { ErrorCode } from '../common/exceptions/error-code.enum';
 import { hashPassword, verifyPassword } from '../common/utils/password';
 import { authConfig } from '../config/auth.config';
+import { MailTemplate } from '../mail/enums/mail-template.enum';
+import { MailService } from '../mail/mail.service';
 import { RedisService } from '../redis/redis.service';
 import { UserResponseDto } from '../users/dto/user-response.dto';
 import { User } from '../users/entities/user.entity';
@@ -30,6 +32,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly redis: RedisService,
     private readonly usersService: UsersService,
+    private readonly mail: MailService,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
@@ -55,6 +58,12 @@ export class AuthService {
       throw error;
     }
 
+    // Queued only once the user exists; never fails the registration.
+    await this.mail.send({
+      to: user.email,
+      template: MailTemplate.Welcome,
+      context: { fullName: user.fullName, email: user.email },
+    });
     return this.issueToken(user);
   }
 

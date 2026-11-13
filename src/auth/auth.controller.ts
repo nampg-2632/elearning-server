@@ -25,6 +25,9 @@ import { RegisterDto } from './dto/register.dto';
 import { extractBearerToken } from './jwt-payload';
 
 const LOGIN_LIMIT_PER_MINUTE = 5;
+// Each register sends a welcome mail, so an open endpoint would let anyone
+// make the server mail arbitrary addresses.
+const REGISTER_LIMIT_PER_MINUTE = 5;
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -33,6 +36,10 @@ export class AuthController {
 
   @Public()
   @Post('register')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({
+    default: { limit: REGISTER_LIMIT_PER_MINUTE, ttl: 60_000 },
+  })
   @ApiCreatedResponse({ type: AuthResponseDto })
   register(@Body() dto: RegisterDto): Promise<AuthResponseDto> {
     return this.authService.register(dto);

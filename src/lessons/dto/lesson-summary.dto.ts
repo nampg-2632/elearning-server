@@ -1,5 +1,4 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { PaginationMetaDto } from '../../common/dto/pagination-meta.dto';
 
 export class LessonSummaryDto {
   @ApiProperty({ format: 'uuid' })
@@ -13,12 +12,4 @@ export class LessonSummaryDto {
 
   @ApiProperty()
   hasTest: boolean;
-}
-
-export class LessonSummaryPageDto {
-  @ApiProperty({ type: [LessonSummaryDto] })
-  items: LessonSummaryDto[];
-
-  @ApiProperty({ type: PaginationMetaDto })
-  meta: PaginationMetaDto;
 }

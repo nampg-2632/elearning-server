@@ -20,6 +20,10 @@ export enum ErrorCode {
   LessonNotFound = 'LESSON_NOT_FOUND',
   CourseNotApproved = 'COURSE_NOT_APPROVED',
   LessonNotAccessible = 'LESSON_NOT_ACCESSIBLE',
+  LessonInUse = 'LESSON_IN_USE',
+
+  // Words
+  WordNotFound = 'WORD_NOT_FOUND',
 
   // Enrollments
   AlreadyEnrolled = 'ALREADY_ENROLLED',

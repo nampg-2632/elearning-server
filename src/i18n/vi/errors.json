@@ -14,6 +14,8 @@
   "LESSON_NOT_FOUND": "Không tìm thấy bài học",
   "COURSE_NOT_APPROVED": "Bạn chưa được duyệt vào khoá học này",
   "LESSON_NOT_ACCESSIBLE": "Bạn không có quyền truy cập bài học này",
+  "LESSON_IN_USE": "Bài học vẫn thuộc một khoá học, hãy gỡ bài học khỏi khoá học trước",
+  "WORD_NOT_FOUND": "Không tìm thấy từ vựng",
   "ALREADY_ENROLLED": "Bạn đã đăng ký khoá học này",
   "USER_COURSE_NOT_FOUND": "Không tìm thấy đăng ký khoá học",
   "INVALID_ENROLLMENT_STATUS": "Không thể thực hiện thao tác với trạng thái đăng ký hiện tại",

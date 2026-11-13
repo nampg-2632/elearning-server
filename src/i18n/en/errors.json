@@ -14,6 +14,8 @@
   "LESSON_NOT_FOUND": "Lesson not found",
   "COURSE_NOT_APPROVED": "Your enrollment in this course has not been approved",
   "LESSON_NOT_ACCESSIBLE": "You do not have access to this lesson",
+  "LESSON_IN_USE": "The lesson still belongs to a course; remove it from the course first",
+  "WORD_NOT_FOUND": "Word not found",
   "ALREADY_ENROLLED": "You have already enrolled in this course",
   "USER_COURSE_NOT_FOUND": "Enrollment not found",
   "INVALID_ENROLLMENT_STATUS": "This action is not allowed for the current enrollment status",

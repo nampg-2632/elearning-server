@@ -1,9 +1,7 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { paginate, Paginated } from '../common/dto/paginated-response';
-import { AppException } from '../common/exceptions/app.exception';
-import { ErrorCode } from '../common/exceptions/error-code.enum';
 import { containsPattern } from '../common/utils/sql';
 import { EnrollmentDto } from '../enrollments/dto/enrollment.dto';
 import { EnrollmentsService } from '../enrollments/enrollments.service';
@@ -19,6 +17,7 @@ import { CourseDetailDto, CourseDto } from './dto/course.dto';
 import { ListCoursesQueryDto } from './dto/list-courses-query.dto';
 import { ListMyCoursesQueryDto } from './dto/list-my-courses-query.dto';
 import { Course } from './entities/course.entity';
+import { courseNotFound } from './course.errors';
 
 // Course catalogue and enrollment for learners. Soft-deleted courses are
 // excluded by TypeORM, including on the join from user_courses.
@@ -142,11 +141,7 @@ export class CoursesService {
   private async findCourse(id: string): Promise<Course> {
     const course = await this.courses.findOneBy({ id });
     if (!course) {
-      throw new AppException({
-        code: ErrorCode.CourseNotFound,
-        messageKey: 'errors.COURSE_NOT_FOUND',
-        status: HttpStatus.NOT_FOUND,
-      });
+      throw courseNotFound();
     }
     return course;
   }

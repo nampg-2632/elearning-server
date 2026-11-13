@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { paginate, Paginated } from '../common/dto/paginated-response';
@@ -6,8 +6,6 @@ import {
   DATE_ONLY_REGEX,
   ONE_DAY_MS,
 } from '../common/constants/date.constants';
-import { AppException } from '../common/exceptions/app.exception';
-import { ErrorCode } from '../common/exceptions/error-code.enum';
 import { containsPattern } from '../common/utils/sql';
 import { UserCourse } from '../enrollments/entities/user-course.entity';
 import { EnrollmentStatus } from '../enrollments/enums/enrollment-status.enum';
@@ -26,6 +24,7 @@ import { countCourseLessons } from './course-lesson-count.query';
 import { ADMIN_COURSE_SORT_ORDER } from './courses.constants';
 import { CourseLesson } from './entities/course-lesson.entity';
 import { Course } from './entities/course.entity';
+import { courseNotFound } from './course.errors';
 
 type CourseStats = Pick<
   AdminCourseDto,
@@ -110,7 +109,7 @@ export class AdminCoursesService {
       relations: { creator: true },
     });
     if (!course) {
-      throw this.courseNotFound();
+      throw courseNotFound();
     }
 
     const [stats, lessons] = await Promise.all([
@@ -147,7 +146,7 @@ export class AdminCoursesService {
   ): Promise<AdminCourseDetailDto> {
     const course = await this.courses.findOneBy({ id });
     if (!course) {
-      throw this.courseNotFound();
+      throw courseNotFound();
     }
     // undefined = not sent (keep), null = clear.
     if (dto.name !== undefined) course.name = dto.name;
@@ -171,7 +170,7 @@ export class AdminCoursesService {
         lock: { mode: 'pessimistic_write' },
       });
       if (!course) {
-        throw this.courseNotFound();
+        throw courseNotFound();
       }
       await this.lessonsService.assertExist(lessonIds, manager);
       await manager.delete(CourseLesson, { courseId: id });
@@ -183,7 +182,7 @@ export class AdminCoursesService {
   async remove(id: string): Promise<void> {
     const result = await this.courses.softDelete({ id });
     if (!result.affected) {
-      throw this.courseNotFound();
+      throw courseNotFound();
     }
   }
 
@@ -272,13 +271,5 @@ export class AdminCoursesService {
       createdAt: course.createdAt,
       updatedAt: course.updatedAt,
     };
-  }
-
-  private courseNotFound(): AppException {
-    return new AppException({
-      code: ErrorCode.CourseNotFound,
-      messageKey: 'errors.COURSE_NOT_FOUND',
-      status: HttpStatus.NOT_FOUND,
-    });
   }
 }

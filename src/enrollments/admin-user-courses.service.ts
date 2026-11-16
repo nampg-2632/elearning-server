@@ -15,18 +15,9 @@ import {
   REJECTABLE_STATUSES,
   USER_COURSE_SORT_ORDER,
 } from './enrollments.constants';
+import type { ReviewChanges, ReviewResult } from './enrollments.types';
 import { UserCourse } from './entities/user-course.entity';
 import { EnrollmentStatus } from './enums/enrollment-status.enum';
-
-type ReviewChanges = Pick<
-  UserCourse,
-  'status' | 'reviewedBy' | 'reviewedAt' | 'rejectReason'
->;
-
-interface ReviewResult {
-  userCourse: AdminUserCourseDto;
-  previousStatus: EnrollmentStatus;
-}
 
 // Enrollments of soft-deleted courses are hidden and cannot be reviewed:
 // TypeORM adds `deleted_at IS NULL` to the inner join on course.

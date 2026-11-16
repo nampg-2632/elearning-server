@@ -2,3 +2,5 @@ dist
 coverage
 node_modules
 yarn.lock
+# Handlebars partial blocks break the glimmer parser
+*.hbs

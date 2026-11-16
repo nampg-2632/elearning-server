@@ -5,6 +5,7 @@ import { UserRole } from '../common/enums/user-role.enum';
 import { AppException } from '../common/exceptions/app.exception';
 import { ErrorCode } from '../common/exceptions/error-code.enum';
 import { hashPassword, verifyPassword } from '../common/utils/password';
+import type { MailService } from '../mail/mail.service';
 import { RedisService } from '../redis/redis.service';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
@@ -52,6 +53,7 @@ describe('AuthService', () => {
     >
   >;
   let redis: jest.Mocked<Pick<RedisService, 'set'>>;
+  let mail: { send: jest.Mock };
 
   beforeEach(() => {
     jwtService = new JwtService({
@@ -66,11 +68,13 @@ describe('AuthService', () => {
       replacePassword: jest.fn(),
     };
     redis = { set: jest.fn() };
+    mail = { send: jest.fn().mockResolvedValue(undefined) };
     service = new AuthService(
       { jwtSecret: SECRET, jwtExpiresInSeconds: EXPIRES_IN },
       jwtService,
       redis as unknown as RedisService,
       usersService as unknown as UsersService,
+      mail as unknown as MailService,
     );
   });
 

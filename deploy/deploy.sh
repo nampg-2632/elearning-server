@@ -62,6 +62,13 @@ compose "$tag" run --rm --no-deps app yarn db:migrate:prod
 echo "==> Starting $tag"
 compose "$tag" up -d --remove-orphans
 
+# Postfix only runs in the direct mail mode (COMPOSE_PROFILES=mta in .env).
+# A service of an inactive profile is not an orphan, so stop it by hand when
+# switching back to relay. Its volumes, and so the DKIM key, are kept.
+if ! grep -qE '^COMPOSE_PROFILES=.*\bmta\b' .env; then
+  compose "$tag" --profile mta rm -sf postfix >/dev/null 2>&1 || true
+fi
+
 if wait_ready "$tag"; then
   set_current "$tag"
   remove_old_images "$tag" "$previous"

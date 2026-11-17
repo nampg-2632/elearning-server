@@ -4,7 +4,7 @@ import { UserRole } from '../common/enums/user-role.enum';
 import { AppException } from '../common/exceptions/app.exception';
 import { ErrorCode } from '../common/exceptions/error-code.enum';
 import { User } from '../users/entities/user.entity';
-import { IdentityProvider } from '../users/enums/identity-provider.enum';
+import { AuthProvider } from '../users/enums/auth-provider.enum';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 import { GoogleAuthService } from './google-auth.service';
@@ -93,7 +93,7 @@ describe('GoogleAuthService', () => {
       });
       expect(verifier.verify).toHaveBeenCalledWith(ID_TOKEN);
       expect(usersService.findByIdentity).toHaveBeenCalledWith(
-        IdentityProvider.Google,
+        AuthProvider.Google,
         '1234567890',
       );
       expect(usersService.createWithIdentity).not.toHaveBeenCalled();
@@ -107,7 +107,7 @@ describe('GoogleAuthService', () => {
         fullName: 'Nam Google',
         avatarUrl: 'https://lh3.googleusercontent.com/a/photo',
         identity: {
-          provider: IdentityProvider.Google,
+          provider: AuthProvider.Google,
           providerUserId: '1234567890',
           email: 'nam@gmail.com',
         },
@@ -199,7 +199,7 @@ describe('GoogleAuthService', () => {
       await service.link(user, { idToken: ID_TOKEN });
 
       expect(usersService.linkIdentity).toHaveBeenCalledWith(user.id, {
-        provider: IdentityProvider.Google,
+        provider: AuthProvider.Google,
         providerUserId: '1234567890',
         email: 'nam@gmail.com',
       });

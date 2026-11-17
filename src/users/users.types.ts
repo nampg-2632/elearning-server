@@ -1,5 +1,5 @@
 import type { UserRole } from '../common/enums/user-role.enum';
-import type { IdentityProvider } from './enums/identity-provider.enum';
+import type { AuthProvider } from './enums/auth-provider.enum';
 
 export type CreateUserInput = {
   email: string;
@@ -8,8 +8,8 @@ export type CreateUserInput = {
   role?: UserRole;
 };
 
-export type IdentityInput = {
-  provider: IdentityProvider;
+export type AuthIdentityInput = {
+  provider: AuthProvider;
   providerUserId: string;
   email: string;
 };
@@ -19,7 +19,7 @@ export type CreateUserWithIdentityInput = {
   email: string;
   fullName: string;
   avatarUrl: string | null;
-  identity: IdentityInput;
+  identity: AuthIdentityInput;
 };
 
 export type UpdateProfileInput = {

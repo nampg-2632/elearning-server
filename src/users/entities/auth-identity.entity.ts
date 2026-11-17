@@ -1,20 +1,16 @@
 import { Column, Entity } from 'typeorm';
 import { AppBaseEntity } from '../../common/entities/base.entity';
-import { IdentityProvider } from '../enums/identity-provider.enum';
+import { AuthProvider } from '../enums/auth-provider.enum';
 
 // An outside account (e.g. Google) that logs in as a user. Unique per
 // (provider, providerUserId) and per (userId, provider).
-@Entity('user_identities')
-export class UserIdentity extends AppBaseEntity {
+@Entity('auth_identities')
+export class AuthIdentity extends AppBaseEntity {
   @Column({ type: 'uuid' })
   userId: string;
 
-  @Column({
-    type: 'enum',
-    enum: IdentityProvider,
-    enumName: 'identity_provider',
-  })
-  provider: IdentityProvider;
+  @Column({ type: 'enum', enum: AuthProvider, enumName: 'auth_provider' })
+  provider: AuthProvider;
 
   // The provider's stable user id (Google: the `sub` claim), never the
   // email, which can change or be reassigned.

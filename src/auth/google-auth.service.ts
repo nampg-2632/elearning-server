@@ -3,7 +3,7 @@ import { AppException } from '../common/exceptions/app.exception';
 import { ErrorCode } from '../common/exceptions/error-code.enum';
 import { isUniqueViolation } from '../common/utils/sql';
 import { User } from '../users/entities/user.entity';
-import { IdentityProvider } from '../users/enums/identity-provider.enum';
+import { AuthProvider } from '../users/enums/auth-provider.enum';
 import {
   USER_AVATAR_URL_MAX_LENGTH,
   USER_FULL_NAME_MAX_LENGTH,
@@ -39,7 +39,7 @@ export class GoogleAuthService {
     }
 
     const linked = await this.usersService.findByIdentity(
-      IdentityProvider.Google,
+      AuthProvider.Google,
       profile.sub,
     );
     if (linked) {
@@ -56,7 +56,7 @@ export class GoogleAuthService {
         fullName: this.fullName(profile),
         avatarUrl: this.avatarUrl(profile),
         identity: {
-          provider: IdentityProvider.Google,
+          provider: AuthProvider.Google,
           providerUserId: profile.sub,
           email: profile.email,
         },
@@ -65,7 +65,7 @@ export class GoogleAuthService {
       if (!isUniqueViolation(error)) throw error;
       // A concurrent request (e.g. a double click) created it first.
       const winner = await this.usersService.findByIdentity(
-        IdentityProvider.Google,
+        AuthProvider.Google,
         profile.sub,
       );
       if (winner) return this.authService.issueToken(winner);
@@ -81,7 +81,7 @@ export class GoogleAuthService {
     const profile = await this.verify(dto.idToken);
     try {
       await this.usersService.linkIdentity(user.id, {
-        provider: IdentityProvider.Google,
+        provider: AuthProvider.Google,
         providerUserId: profile.sub,
         email: profile.email,
       });
@@ -89,7 +89,7 @@ export class GoogleAuthService {
       if (!isUniqueViolation(error)) throw error;
       // Linking the same Google account again changes nothing.
       const owner = await this.usersService.findByIdentity(
-        IdentityProvider.Google,
+        AuthProvider.Google,
         profile.sub,
       );
       if (owner?.id === user.id) return;

@@ -2,13 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserRole } from '../common/enums/user-role.enum';
-import { UserIdentity } from './entities/user-identity.entity';
+import { AuthIdentity } from './entities/auth-identity.entity';
 import { User } from './entities/user.entity';
-import { IdentityProvider } from './enums/identity-provider.enum';
+import { AuthProvider } from './enums/auth-provider.enum';
 import type {
   CreateUserInput,
   CreateUserWithIdentityInput,
-  IdentityInput,
+  AuthIdentityInput,
   UpdateProfileInput,
 } from './users.types';
 
@@ -16,13 +16,13 @@ import type {
 export class UsersService {
   constructor(
     @InjectRepository(User) private readonly users: Repository<User>,
-    @InjectRepository(UserIdentity)
-    private readonly identities: Repository<UserIdentity>,
+    @InjectRepository(AuthIdentity)
+    private readonly identities: Repository<AuthIdentity>,
   ) {}
 
   // The user an outside account logs in as, if it was linked.
   async findByIdentity(
-    provider: IdentityProvider,
+    provider: AuthProvider,
     providerUserId: string,
   ): Promise<User | null> {
     const identity = await this.identities.findOneBy({
@@ -34,7 +34,10 @@ export class UsersService {
 
   // Throws a unique violation when the outside account is linked already,
   // or the user already has one from this provider.
-  async linkIdentity(userId: string, identity: IdentityInput): Promise<void> {
+  async linkIdentity(
+    userId: string,
+    identity: AuthIdentityInput,
+  ): Promise<void> {
     await this.identities.insert({ userId, ...identity });
   }
 
@@ -110,7 +113,7 @@ export class UsersService {
           tokenVersion: 0,
         }),
       );
-      await manager.insert(UserIdentity, { userId: user.id, ...identity });
+      await manager.insert(AuthIdentity, { userId: user.id, ...identity });
       return user;
     });
   }

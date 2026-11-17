@@ -399,7 +399,7 @@ public/
   quyền admin bằng `@Roles(UserRole.Admin)`. Đăng xuất đưa token vào blacklist trên Redis.
 - **Đăng nhập Google:** frontend dùng Sign in with Google, gửi `credential` (ID token) lên
   `POST /auth/google`. Backend kiểm tra chữ ký, `aud` (thuộc `GOOGLE_CLIENT_ID`), `iss`, hạn và
-  `email_verified`, rồi tìm user theo `sub` trong bảng `user_identities`, không theo email. Lần đầu
+  `email_verified`, rồi tìm user theo `sub` trong bảng `auth_identities`, không theo email. Lần đầu
   thì tạo tài khoản không mật khẩu. Email trùng tài khoản mật khẩu thì không tự liên kết
   (`409 ACCOUNT_EXISTS_USE_PASSWORD`): user đăng nhập bằng mật khẩu rồi gọi
   `POST /me/identities/google`. Lấy client ID: Google Cloud Console → Google Auth Platform → Clients,

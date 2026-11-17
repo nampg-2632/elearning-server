@@ -46,6 +46,15 @@ class EnvironmentVariables {
   @IsString()
   CORS_ORIGINS?: string;
 
+  // Base URL of the frontend; mails link to its /verify-email and
+  // /reset-password pages. Development falls back to http://localhost:5173.
+  @ValidateIf(
+    (env: EnvironmentVariables) =>
+      env.NODE_ENV === NodeEnv.Production || env.FRONTEND_URL !== undefined,
+  )
+  @IsUrl({ require_tld: false, require_protocol: true })
+  FRONTEND_URL?: string;
+
   @IsEnum(['vi', 'en'])
   FALLBACK_LANGUAGE: string = 'vi';
 

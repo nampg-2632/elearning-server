@@ -14,6 +14,10 @@ export enum ErrorCode {
   EmailAlreadyExists = 'EMAIL_ALREADY_EXISTS',
   InvalidCredentials = 'INVALID_CREDENTIALS',
   InvalidCurrentPassword = 'INVALID_CURRENT_PASSWORD',
+  EmailNotVerified = 'EMAIL_NOT_VERIFIED',
+  EmailNotFound = 'EMAIL_NOT_FOUND',
+  InvalidVerificationToken = 'INVALID_VERIFICATION_TOKEN',
+  InvalidResetToken = 'INVALID_RESET_TOKEN',
 
   // Courses & lessons
   CourseNotFound = 'COURSE_NOT_FOUND',

@@ -83,6 +83,24 @@ export class RedisService implements OnModuleInit, OnApplicationShutdown {
     );
   }
 
+  // Sets the key only when it does not exist; true when this call set it.
+  async setIfAbsent(
+    key: string,
+    value: string,
+    ttlSeconds: number,
+  ): Promise<boolean> {
+    const result = await this.client.set(key, value, {
+      condition: 'NX',
+      expiration: { type: 'EX', value: ttlSeconds },
+    });
+    return result === 'OK';
+  }
+
+  // Reads and deletes in one step, so only one caller ever gets the value.
+  getDel(key: string): Promise<string | null> {
+    return this.client.getDel(key);
+  }
+
   async getJson<T>(key: string): Promise<T | null> {
     const value = await this.get(key);
     return value === null ? null : (JSON.parse(value) as T);

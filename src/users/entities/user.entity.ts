@@ -28,4 +28,8 @@ export class User extends AppBaseEntity {
   // Carried in the JWT (`tv`); bumping it revokes every issued token.
   @Column({ type: 'int', default: 0 })
   tokenVersion: number;
+
+  // null until the user proves the email is theirs; login needs it set.
+  @Column({ type: 'timestamptz', nullable: true })
+  emailVerifiedAt: Date | null;
 }

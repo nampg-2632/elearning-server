@@ -1,8 +1,22 @@
 import { MailTemplate } from './enums/mail-template.enum';
 
-interface WelcomeContext {
+interface AccountContext {
   fullName: string;
   email: string;
+}
+
+interface VerifyEmailContext extends AccountContext {
+  link: string;
+  expiresInHours: number;
+}
+
+interface ResetPasswordContext extends AccountContext {
+  link: string;
+  expiresInMinutes: number;
+}
+
+interface PasswordChangedContext extends AccountContext {
+  forgotPasswordLink: string;
 }
 
 interface EnrollmentContext {
@@ -16,7 +30,9 @@ interface EnrollmentDeclinedContext extends EnrollmentContext {
 
 // Variables each template reads.
 export interface MailContexts {
-  [MailTemplate.Welcome]: WelcomeContext;
+  [MailTemplate.VerifyEmail]: VerifyEmailContext;
+  [MailTemplate.ResetPassword]: ResetPasswordContext;
+  [MailTemplate.PasswordChanged]: PasswordChangedContext;
   [MailTemplate.CourseApproved]: EnrollmentContext;
   [MailTemplate.CourseRejected]: EnrollmentDeclinedContext;
   [MailTemplate.CourseRevoked]: EnrollmentDeclinedContext;

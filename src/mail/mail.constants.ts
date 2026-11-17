@@ -31,8 +31,12 @@ export const MAIL_JOB_OPTIONS: DefaultJobOptions = {
 
 // Vietnamese first, English second, like the body.
 export const MAIL_SUBJECTS: Record<MailTemplate, string> = {
-  [MailTemplate.Welcome]:
-    'Chào mừng bạn đến với e-Learning / Welcome to e-Learning',
+  [MailTemplate.VerifyEmail]:
+    'Xác nhận email đăng ký e-Learning / Verify your e-Learning email',
+  [MailTemplate.ResetPassword]:
+    'Đặt lại mật khẩu e-Learning / Reset your e-Learning password',
+  [MailTemplate.PasswordChanged]:
+    'Mật khẩu e-Learning đã thay đổi / Your e-Learning password was changed',
   [MailTemplate.CourseApproved]:
     'Đăng ký khoá học đã được duyệt / Course enrollment approved',
   [MailTemplate.CourseRejected]:

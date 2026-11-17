@@ -8,8 +8,9 @@ export class User extends AppBaseEntity {
   @Column({ type: 'varchar', length: 320 })
   email: string;
 
-  @Column({ type: 'varchar', length: 255, select: false })
-  passwordHash: string;
+  // null for an account created through Google, which has no password.
+  @Column({ type: 'varchar', length: 255, nullable: true, select: false })
+  passwordHash: string | null;
 
   @Column({ type: 'varchar', length: 100 })
   fullName: string;

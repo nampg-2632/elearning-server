@@ -130,6 +130,9 @@ jobs:
         env:
           API_HOST: ${{ secrets.API_HOST }}
           CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
+          GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+          # Host of the Google sign-in test page; unset = page off.
+          GOOGLE_LOGIN_HOST: ${{ vars.GOOGLE_LOGIN_HOST }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           POSTGRES_USER: ${{ vars.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
@@ -150,6 +153,7 @@ jobs:
           : "${POSTGRES_DB:?set the POSTGRES_DB variable of the prod environment}"
           : "${MAIL_FROM:?set the MAIL_FROM secret of the prod environment}"
           umask 077
+          profiles=()
           case $API_HOST in
             http://*) app_url=$API_HOST ;;
             *) app_url=https://$API_HOST ;;
@@ -159,6 +163,7 @@ jobs:
           API_HOST=$API_HOST
           APP_URL=$app_url
           CORS_ORIGINS=$CORS_ORIGINS
+          GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
           JWT_SECRET=$JWT_SECRET
           POSTGRES_USER=$POSTGRES_USER
           POSTGRES_PASSWORD=$POSTGRES_PASSWORD
@@ -184,8 +189,8 @@ jobs:
               mail_domain=${MAIL_FROM##*@}
               mail_domain=${mail_domain%%>*}
               mail_hostname=${MAIL_HOSTNAME:-${API_HOST#*://}}
+              profiles+=(mta)
               cat >> deploy/.env <<EOF
-          COMPOSE_PROFILES=mta
           MAIL_HOST=postfix
           MAIL_PORT=587
           MAIL_SECURE=false
@@ -198,11 +203,27 @@ jobs:
               exit 1
               ;;
           esac
+          # Optional Caddy sites go to deploy/sites, uploaded as a whole.
+          mkdir -p deploy/sites
+          if [ -n "$GOOGLE_LOGIN_HOST" ]; then
+            profiles+=(google-login)
+            echo "GOOGLE_LOGIN_HOST=$GOOGLE_LOGIN_HOST" >> deploy/.env
+            cp deploy/caddy/google-login.caddy deploy/sites/
+          fi
+          if ((${#profiles[@]})); then
+            echo "COMPOSE_PROFILES=$(IFS=,; echo "${profiles[*]}")" >> deploy/.env
+          fi
 
       - name: Upload deploy files
         run: |
           scp -p deploy/docker-compose.prod.yml deploy/Caddyfile deploy/deploy.sh deploy/.env \
             "vps:$APP_DIR/"
+          # Static pages served by nginx (Google sign-in test page), and the
+          # optional Caddy sites, replaced as a whole so a removed one goes.
+          scp -rp public deploy/nginx "vps:$APP_DIR/"
+          # shellcheck disable=SC2029
+          ssh vps "rm -rf '$APP_DIR/sites'"
+          scp -rp deploy/sites "vps:$APP_DIR/"
 
       # The job token expires when the job ends; logging out afterwards keeps
       # it off the VPS anyway. Works whether the package is public or not.

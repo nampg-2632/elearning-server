@@ -86,6 +86,12 @@ class EnvironmentVariables {
   @Min(60)
   JWT_EXPIRES_IN_SECONDS: number = 86400;
 
+  // Comma-separated OAuth client IDs (Google Cloud Console, type Web
+  // application); unset = Google sign-in is off.
+  @IsOptional()
+  @IsString()
+  GOOGLE_CLIENT_ID?: string;
+
   // Development falls back to Mailpit on localhost:1025; production must say
   // where mail goes, or every mail would fail in the background.
   @ValidateIf(

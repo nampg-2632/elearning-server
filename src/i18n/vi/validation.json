@@ -14,6 +14,7 @@
   "MAX_LENGTH": "{property} không được vượt quá {constraints.0} ký tự",
   "PASSWORD_WEAK": "{property} phải có cả chữ và số",
   "IS_URL": "{property} phải là URL hợp lệ",
+  "IS_JWT": "{property} phải là JWT hợp lệ",
   "ARRAY_UNIQUE": "{property} không được chứa phần tử trùng nhau",
   "DATE_TIMEZONE_REQUIRED": "{property} phải là ngày (YYYY-MM-DD) hoặc ngày giờ có múi giờ (Z hoặc +07:00)",
   "PROPERTY_NOT_ALLOWED": "{property} không được phép gửi lên"

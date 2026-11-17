@@ -1,10 +1,10 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { QueryFailedError } from 'typeorm';
 import { AppException } from '../common/exceptions/app.exception';
 import { ErrorCode } from '../common/exceptions/error-code.enum';
 import { hashPassword, verifyPassword } from '../common/utils/password';
+import { isUniqueViolation } from '../common/utils/sql';
 import { authConfig } from '../config/auth.config';
 import { MailTemplate } from '../mail/enums/mail-template.enum';
 import { MailService } from '../mail/mail.service';
@@ -17,8 +17,6 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { blacklistKey, JwtPayload } from './jwt-payload';
-
-const PG_UNIQUE_VIOLATION = '23505';
 
 @Injectable()
 export class AuthService {
@@ -49,10 +47,7 @@ export class AuthService {
       });
     } catch (error) {
       // Lost a race with a concurrent register for the same email.
-      if (
-        error instanceof QueryFailedError &&
-        (error.driverError as { code?: string }).code === PG_UNIQUE_VIOLATION
-      ) {
+      if (isUniqueViolation(error)) {
         throw this.emailAlreadyExists();
       }
       throw error;
@@ -116,7 +111,7 @@ export class AuthService {
     return this.issueToken(user);
   }
 
-  private async issueToken(user: User): Promise<AuthResponseDto> {
+  async issueToken(user: User): Promise<AuthResponseDto> {
     const payload: JwtPayload = {
       sub: user.id,
       role: user.role,

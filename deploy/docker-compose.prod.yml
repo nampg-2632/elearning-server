@@ -86,18 +86,42 @@ services:
     mem_limit: 128m
     logging: *logging
 
-  # HTTPS termination; gets and renews the certificate for API_HOST itself.
+  # Static test page for Sign in with Google on its own host
+  # (GOOGLE_LOGIN_HOST, profile google-login: both set by the release workflow
+  # only when that variable exists). It calls the API cross-origin, so
+  # CORS_ORIGINS must list https://GOOGLE_LOGIN_HOST, and the Google client
+  # must have it as an Authorized JavaScript origin. The workflow uploads
+  # public/ and nginx/ next to this file.
+  google-login:
+    image: nginx:1.27-alpine
+    profiles: [google-login]
+    restart: unless-stopped
+    environment:
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_LOGIN_API_BASE: ${APP_URL:?set APP_URL}/api/v1
+      GOOGLE_LOGIN_API_ORIGIN: ${APP_URL:?set APP_URL}
+    volumes:
+      - ./nginx/google-login.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./public/google-login:/usr/share/nginx/html:ro
+    mem_limit: 32m
+    logging: *logging
+
+  # HTTPS termination; gets and renews the certificates for API_HOST (and
+  # GOOGLE_LOGIN_HOST) itself.
   caddy:
     image: caddy:2
     restart: unless-stopped
     environment:
       API_HOST: ${API_HOST:?set API_HOST}
+      GOOGLE_LOGIN_HOST: ${GOOGLE_LOGIN_HOST:-}
     ports:
       - 80:80
       - 443:443
       - 443:443/udp
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Optional sites (google-login.caddy), written by the workflow.
+      - ./sites:/etc/caddy/sites:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:

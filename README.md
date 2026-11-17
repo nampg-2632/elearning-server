@@ -38,7 +38,7 @@ Redis, nếu sai hoặc thiếu sẽ dừng ngay kèm thông báo lỗi.
 ### Cách 1: Docker (khuyến nghị)
 
 ```bash
-docker compose up -d                      # app (watch mode) + PostgreSQL + Redis + Mailpit
+docker compose up -d                      # app (watch mode) + PostgreSQL + Redis + Mailpit + trang Google (:5173)
 docker compose exec app yarn db:migrate   # tạo bảng (lần đầu / khi có migration mới)
 docker compose exec app yarn db:seed      # dữ liệu mẫu
 docker compose logs -f app                # xem log
@@ -106,6 +106,30 @@ Nằm ngoài `API_PREFIX`, không cần token:
 | ------------------- | --------------------------------------------------------------- |
 | `GET /health/live`  | Process còn chạy (Docker `HEALTHCHECK` dùng)                    |
 | `GET /health/ready` | PostgreSQL và Redis trả lời; `503` kèm phần bị lỗi nếu không ổn |
+
+### Thử đăng nhập Google
+
+Chưa có frontend thì dùng trang tĩnh [`public/google-login`](public/google-login/index.html), do
+nginx phục vụ (cấu hình [`deploy/nginx/google-login.conf.template`](deploy/nginx/google-login.conf.template)).
+Trang hiện nút Google, gọi `POST /auth/google` và in kết quả; client ID lấy từ `GOOGLE_CLIENT_ID`
+(nginx sinh `config.js` lúc khởi động), không nhập tay.
+
+1. Tạo OAuth client loại **Web application** (Google Cloud Console → Google Auth Platform →
+   Clients). Ở _Authorized JavaScript origins_:
+   - dev: `http://localhost` và `http://localhost:5173`;
+   - production: `https://<GOOGLE_LOGIN_HOST>`. Nên dùng client riêng cho production và
+     _Publish app_.
+2. Dev: đặt `GOOGLE_CLIENT_ID` trong `.env` (`CORS_ORIGINS` phải có `http://localhost:5173`), chạy
+   `docker compose up -d google-login` rồi mở `http://localhost:5173` (dùng `localhost`, không dùng
+   `127.0.0.1`).
+3. Production: trang chạy trên subdomain riêng, chỉ bật khi có variable `GOOGLE_LOGIN_HOST`:
+   - DNS: bản ghi **A** `<GOOGLE_LOGIN_HOST>` → IP VPS (Caddy tự lấy chứng chỉ HTTPS);
+   - variable `GOOGLE_LOGIN_HOST` (vd `learning.example.com`) và `GOOGLE_CLIENT_ID` của environment
+     `prod`; thêm `https://<GOOGLE_LOGIN_HOST>` vào secret `CORS_ORIGINS` (trang gọi API khác
+     origin);
+   - deploy lại. Workflow bật profile `google-login` (nginx) và chép
+     [`deploy/caddy/google-login.caddy`](deploy/caddy/google-login.caddy) vào `sites/` mà Caddy
+     import. Xoá variable rồi deploy lại là tắt trang.
 
 ## Chạy ở môi trường production
 
@@ -190,10 +214,12 @@ với bản đang chạy: thêm bảng/cột thì được, xoá hoặc đổi t
 
    Và các variable (tab **Environment variables**, không phải bí mật):
 
-   | Variable        | Giá trị                                                     |
-   | --------------- | ----------------------------------------------------------- |
-   | `POSTGRES_USER` | User của database, ví dụ `elearning`                        |
-   | `POSTGRES_DB`   | Tên database, ví dụ `elearning`; cả hai chỉ áp dụng lần đầu |
+   | Variable            | Giá trị                                                               |
+   | ------------------- | --------------------------------------------------------------------- |
+   | `POSTGRES_USER`     | User của database, ví dụ `elearning`                                  |
+   | `POSTGRES_DB`       | Tên database, ví dụ `elearning`; cả hai chỉ áp dụng lần đầu           |
+   | `GOOGLE_CLIENT_ID`  | OAuth client ID (loại Web) cho đăng nhập Google; bỏ trống = tắt       |
+   | `GOOGLE_LOGIN_HOST` | Subdomain cho trang thử đăng nhập Google; bỏ trống = không chạy trang |
 
    Cấu hình mail: xem [Gửi mail trên production](#gửi-mail-trên-production).
 
@@ -297,28 +323,29 @@ echo "UPDATE users SET role = 'admin' WHERE lower(email) = lower('you@example.co
 
 ## Biến môi trường
 
-| Biến                         | Mặc định                          | Mô tả                                                       |
-| ---------------------------- | --------------------------------- | ----------------------------------------------------------- |
-| `NODE_ENV`                   | `development`                     | `development` \| `test` \| `production`                     |
-| `PORT`                       | `3000`                            |                                                             |
-| `APP_NAME`, `APP_URL`        |                                   | Tên app (Swagger) và URL gốc                                |
-| `API_PREFIX`                 | `api/v1`                          | Prefix cho mọi route                                        |
-| `CORS_ORIGINS`               |                                   | Danh sách origin, cách nhau bởi dấu phẩy; rỗng = tắt        |
-| `FALLBACK_LANGUAGE`          | `vi`                              | Ngôn ngữ mặc định (`vi` \| `en`)                            |
-| `TRUST_PROXY`                | `0`                               | Số reverse proxy phía trước (Caddy trên VPS = `1`)          |
-| `DATABASE_URL`               | **bắt buộc**                      | Chuỗi kết nối PostgreSQL                                    |
-| `DATABASE_POOL_MAX`          | `10`                              |                                                             |
-| `DATABASE_LOGGING`           | `false`                           | Log câu SQL                                                 |
-| `REDIS_URL`                  | **bắt buộc**                      |                                                             |
-| `REDIS_KEY_PREFIX`           | `elearning:`                      | Prefix cho mọi key Redis                                    |
-| `JWT_SECRET`                 | **bắt buộc**                      | Khoá ký JWT (HS256), tối thiểu 32 ký tự                     |
-| `JWT_EXPIRES_IN_SECONDS`     | `86400`                           | Thời hạn access token                                       |
-| `MAIL_HOST`                  | `localhost`                       | SMTP server; **bắt buộc** khi production                    |
-| `MAIL_PORT`                  | `1025`                            | `1025` = Mailpit                                            |
-| `MAIL_SECURE`                | `false`                           | `true` = TLS ngay từ đầu (465); `false` = STARTTLS          |
-| `MAIL_USER`, `MAIL_PASSWORD` |                                   | Bỏ trống khi SMTP không cần đăng nhập                       |
-| `MAIL_FROM`                  | `e-Learning <no-reply@localhost>` | Người gửi; **bắt buộc** khi production                      |
-| `MAIL_RATE_PER_HOUR`         | `0`                               | Số mail tối đa mỗi giờ (mọi instance); `0` = không giới hạn |
+| Biến                         | Mặc định                          | Mô tả                                                                    |
+| ---------------------------- | --------------------------------- | ------------------------------------------------------------------------ |
+| `NODE_ENV`                   | `development`                     | `development` \| `test` \| `production`                                  |
+| `PORT`                       | `3000`                            |                                                                          |
+| `APP_NAME`, `APP_URL`        |                                   | Tên app (Swagger) và URL gốc                                             |
+| `API_PREFIX`                 | `api/v1`                          | Prefix cho mọi route                                                     |
+| `CORS_ORIGINS`               |                                   | Danh sách origin, cách nhau bởi dấu phẩy; rỗng = tắt                     |
+| `FALLBACK_LANGUAGE`          | `vi`                              | Ngôn ngữ mặc định (`vi` \| `en`)                                         |
+| `TRUST_PROXY`                | `0`                               | Số reverse proxy phía trước (Caddy trên VPS = `1`)                       |
+| `DATABASE_URL`               | **bắt buộc**                      | Chuỗi kết nối PostgreSQL                                                 |
+| `DATABASE_POOL_MAX`          | `10`                              |                                                                          |
+| `DATABASE_LOGGING`           | `false`                           | Log câu SQL                                                              |
+| `REDIS_URL`                  | **bắt buộc**                      |                                                                          |
+| `REDIS_KEY_PREFIX`           | `elearning:`                      | Prefix cho mọi key Redis                                                 |
+| `JWT_SECRET`                 | **bắt buộc**                      | Khoá ký JWT (HS256), tối thiểu 32 ký tự                                  |
+| `JWT_EXPIRES_IN_SECONDS`     | `86400`                           | Thời hạn access token                                                    |
+| `GOOGLE_CLIENT_ID`           |                                   | OAuth client ID cho đăng nhập Google, cách nhau bởi dấu phẩy; rỗng = tắt |
+| `MAIL_HOST`                  | `localhost`                       | SMTP server; **bắt buộc** khi production                                 |
+| `MAIL_PORT`                  | `1025`                            | `1025` = Mailpit                                                         |
+| `MAIL_SECURE`                | `false`                           | `true` = TLS ngay từ đầu (465); `false` = STARTTLS                       |
+| `MAIL_USER`, `MAIL_PASSWORD` |                                   | Bỏ trống khi SMTP không cần đăng nhập                                    |
+| `MAIL_FROM`                  | `e-Learning <no-reply@localhost>` | Người gửi; **bắt buộc** khi production                                   |
+| `MAIL_RATE_PER_HOUR`         | `0`                               | Số mail tối đa mỗi giờ (mọi instance); `0` = không giới hạn              |
 
 Có thể ghi đè riêng cho máy mình bằng `.env.local` (được ưu tiên hơn `.env`).
 
@@ -362,12 +389,21 @@ src/
   health/        /health/live, /health/ready
   redis/         Redis module/service dùng chung
   mail/          Queue `mail` (BullMQ), MailProcessor gửi bằng nodemailer, template song ngữ
+public/
+  google-login/  Trang thử đăng nhập Google (nginx phục vụ, xem "Thử đăng nhập Google")
 ```
 
 ## Quy ước
 
 - **Auth:** mọi route cần `Authorization: Bearer <token>` trừ route có `@Public()`. Giới hạn
   quyền admin bằng `@Roles(UserRole.Admin)`. Đăng xuất đưa token vào blacklist trên Redis.
+- **Đăng nhập Google:** frontend dùng Sign in with Google, gửi `credential` (ID token) lên
+  `POST /auth/google`. Backend kiểm tra chữ ký, `aud` (thuộc `GOOGLE_CLIENT_ID`), `iss`, hạn và
+  `email_verified`, rồi tìm user theo `sub` trong bảng `auth_identities`, không theo email. Lần đầu
+  thì tạo tài khoản không mật khẩu. Email trùng tài khoản mật khẩu thì không tự liên kết
+  (`409 ACCOUNT_EXISTS_USE_PASSWORD`): user đăng nhập bằng mật khẩu rồi gọi
+  `POST /me/identities/google`. Lấy client ID: Google Cloud Console → Google Auth Platform → Clients,
+  loại Web application, khai báo origin của frontend ở _Authorized JavaScript origins_.
 - **Ngôn ngữ:** chọn bằng `?lang=`, header `x-lang` hoặc `Accept-Language`; mặc định `vi`.
 - **Lỗi:** mọi lỗi trả cùng format `{ statusCode, code, message, errors?, path, timestamp }`.
   Lỗi nghiệp vụ dùng `AppException` với `code` cố định và `message` lấy từ `src/i18n/*/errors.json`.

@@ -70,7 +70,11 @@ describe('AuthService', () => {
     redis = { set: jest.fn() };
     mail = { send: jest.fn().mockResolvedValue(undefined) };
     service = new AuthService(
-      { jwtSecret: SECRET, jwtExpiresInSeconds: EXPIRES_IN },
+      {
+        jwtSecret: SECRET,
+        jwtExpiresInSeconds: EXPIRES_IN,
+        googleClientIds: [],
+      },
       jwtService,
       redis as unknown as RedisService,
       usersService as unknown as UsersService,

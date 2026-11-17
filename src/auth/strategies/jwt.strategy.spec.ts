@@ -27,7 +27,11 @@ describe('JwtStrategy', () => {
     redis = { exists: jest.fn().mockResolvedValue(false) };
     usersService = { findById: jest.fn().mockResolvedValue(user) };
     strategy = new JwtStrategy(
-      { jwtSecret: 'x'.repeat(32), jwtExpiresInSeconds: 3600 },
+      {
+        jwtSecret: 'x'.repeat(32),
+        jwtExpiresInSeconds: 3600,
+        googleClientIds: [],
+      },
       redis as unknown as RedisService,
       usersService as unknown as UsersService,
     );

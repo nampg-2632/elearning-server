@@ -150,6 +150,7 @@ jobs:
       MAIL_HOST: localhost
       MAIL_PORT: 1025
       MAIL_FROM: e-Learning <no-reply@elearning.local>
+      FRONTEND_URL: http://localhost:5173
     steps:
       - uses: actions/checkout@v5
 
@@ -177,7 +178,7 @@ jobs:
           docker run -d --name app --network host \
             -e DATABASE_URL -e REDIS_URL=redis://localhost:6379 \
             -e JWT_SECRET=ci-only-secret-not-used-anywhere-else \
-            -e MAIL_HOST -e MAIL_PORT -e MAIL_FROM \
+            -e MAIL_HOST -e MAIL_PORT -e MAIL_FROM -e FRONTEND_URL \
             "$IMAGE"
           for _ in $(seq 1 30); do
             curl -sf http://localhost:3000/health/ready && exit 0
@@ -199,16 +200,16 @@ jobs:
             exit 1
           fi
 
-      # Mailpit must get the welcome mail of the smoke test (queue, worker
-      # and templates in the image) and the one of the script the VPS uses
-      # to check a mail setup.
+      # Mailpit must get the verification mail of the smoke test (queue,
+      # worker and templates in the image) and the one of the script the VPS
+      # uses to check a mail setup.
       - name: Check mail
         run: |
           docker run --rm --network host -e MAIL_HOST -e MAIL_PORT -e MAIL_FROM \
             "$IMAGE" yarn mail:test:prod smoke@elearning.local
           for _ in $(seq 1 10); do
             subjects=$(curl -s http://localhost:8025/api/v1/messages | jq -r '.messages[].Subject')
-            if grep -q 'Welcome to e-Learning' <<<"$subjects" &&
+            if grep -q 'Verify your e-Learning email' <<<"$subjects" &&
               grep -q 'test mail' <<<"$subjects"; then
               exit 0
             fi

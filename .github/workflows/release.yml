@@ -130,6 +130,7 @@ jobs:
         env:
           API_HOST: ${{ secrets.API_HOST }}
           CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           POSTGRES_USER: ${{ vars.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
@@ -149,6 +150,7 @@ jobs:
           : "${POSTGRES_USER:?set the POSTGRES_USER variable of the prod environment}"
           : "${POSTGRES_DB:?set the POSTGRES_DB variable of the prod environment}"
           : "${MAIL_FROM:?set the MAIL_FROM secret of the prod environment}"
+          : "${FRONTEND_URL:?set the FRONTEND_URL variable of the prod environment}"
           umask 077
           case $API_HOST in
             http://*) app_url=$API_HOST ;;
@@ -159,6 +161,7 @@ jobs:
           API_HOST=$API_HOST
           APP_URL=$app_url
           CORS_ORIGINS=$CORS_ORIGINS
+          FRONTEND_URL=$FRONTEND_URL
           JWT_SECRET=$JWT_SECRET
           POSTGRES_USER=$POSTGRES_USER
           POSTGRES_PASSWORD=$POSTGRES_PASSWORD

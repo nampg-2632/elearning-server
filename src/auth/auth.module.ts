@@ -8,6 +8,7 @@ import { MailModule } from '../mail/mail.module';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { OneTimeTokenService } from './one-time-token.service';
 import { ProfileController } from './profile.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
@@ -27,10 +28,10 @@ import { JwtStrategy } from './strategies/jwt.strategy';
       }),
     }),
     // In-memory counters, only applied where ThrottlerGuard is used
-    // (register, login). Limits are set per route with @Throttle().
+    // (the public auth routes). Limits are set per route with @Throttle().
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
   ],
   controllers: [AuthController, ProfileController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, OneTimeTokenService, JwtStrategy],
 })
 export class AuthModule {}

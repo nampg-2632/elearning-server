@@ -190,10 +190,11 @@ với bản đang chạy: thêm bảng/cột thì được, xoá hoặc đổi t
 
    Và các variable (tab **Environment variables**, không phải bí mật):
 
-   | Variable        | Giá trị                                                     |
-   | --------------- | ----------------------------------------------------------- |
-   | `POSTGRES_USER` | User của database, ví dụ `elearning`                        |
-   | `POSTGRES_DB`   | Tên database, ví dụ `elearning`; cả hai chỉ áp dụng lần đầu |
+   | Variable        | Giá trị                                                                           |
+   | --------------- | --------------------------------------------------------------------------------- |
+   | `POSTGRES_USER` | User của database, ví dụ `elearning`                                              |
+   | `POSTGRES_DB`   | Tên database, ví dụ `elearning`; cả hai chỉ áp dụng lần đầu                       |
+   | `FRONTEND_URL`  | URL gốc của frontend, ví dụ `https://app.example.com`; link trong mail trỏ về đây |
 
    Cấu hình mail: xem [Gửi mail trên production](#gửi-mail-trên-production).
 
@@ -285,7 +286,7 @@ Chuyển từ `direct` về `relay` thì `deploy.sh` tự dừng Postfix; volume
 ### Tạo admin
 
 Production không chạy seed nên không có sẵn admin. Đăng ký tài khoản qua
-`POST /api/v1/auth/register` như user thường, rồi nâng quyền trên VPS:
+`POST /api/v1/auth/register` như user thường, mở link trong mail xác nhận, rồi nâng quyền trên VPS:
 
 ```bash
 echo "UPDATE users SET role = 'admin' WHERE lower(email) = lower('you@example.com');" |
@@ -297,28 +298,29 @@ echo "UPDATE users SET role = 'admin' WHERE lower(email) = lower('you@example.co
 
 ## Biến môi trường
 
-| Biến                         | Mặc định                          | Mô tả                                                       |
-| ---------------------------- | --------------------------------- | ----------------------------------------------------------- |
-| `NODE_ENV`                   | `development`                     | `development` \| `test` \| `production`                     |
-| `PORT`                       | `3000`                            |                                                             |
-| `APP_NAME`, `APP_URL`        |                                   | Tên app (Swagger) và URL gốc                                |
-| `API_PREFIX`                 | `api/v1`                          | Prefix cho mọi route                                        |
-| `CORS_ORIGINS`               |                                   | Danh sách origin, cách nhau bởi dấu phẩy; rỗng = tắt        |
-| `FALLBACK_LANGUAGE`          | `vi`                              | Ngôn ngữ mặc định (`vi` \| `en`)                            |
-| `TRUST_PROXY`                | `0`                               | Số reverse proxy phía trước (Caddy trên VPS = `1`)          |
-| `DATABASE_URL`               | **bắt buộc**                      | Chuỗi kết nối PostgreSQL                                    |
-| `DATABASE_POOL_MAX`          | `10`                              |                                                             |
-| `DATABASE_LOGGING`           | `false`                           | Log câu SQL                                                 |
-| `REDIS_URL`                  | **bắt buộc**                      |                                                             |
-| `REDIS_KEY_PREFIX`           | `elearning:`                      | Prefix cho mọi key Redis                                    |
-| `JWT_SECRET`                 | **bắt buộc**                      | Khoá ký JWT (HS256), tối thiểu 32 ký tự                     |
-| `JWT_EXPIRES_IN_SECONDS`     | `86400`                           | Thời hạn access token                                       |
-| `MAIL_HOST`                  | `localhost`                       | SMTP server; **bắt buộc** khi production                    |
-| `MAIL_PORT`                  | `1025`                            | `1025` = Mailpit                                            |
-| `MAIL_SECURE`                | `false`                           | `true` = TLS ngay từ đầu (465); `false` = STARTTLS          |
-| `MAIL_USER`, `MAIL_PASSWORD` |                                   | Bỏ trống khi SMTP không cần đăng nhập                       |
-| `MAIL_FROM`                  | `e-Learning <no-reply@localhost>` | Người gửi; **bắt buộc** khi production                      |
-| `MAIL_RATE_PER_HOUR`         | `0`                               | Số mail tối đa mỗi giờ (mọi instance); `0` = không giới hạn |
+| Biến                         | Mặc định                          | Mô tả                                                                 |
+| ---------------------------- | --------------------------------- | --------------------------------------------------------------------- |
+| `NODE_ENV`                   | `development`                     | `development` \| `test` \| `production`                               |
+| `PORT`                       | `3000`                            |                                                                       |
+| `APP_NAME`, `APP_URL`        |                                   | Tên app (Swagger) và URL gốc                                          |
+| `API_PREFIX`                 | `api/v1`                          | Prefix cho mọi route                                                  |
+| `CORS_ORIGINS`               |                                   | Danh sách origin, cách nhau bởi dấu phẩy; rỗng = tắt                  |
+| `FRONTEND_URL`               | `http://localhost:5173`           | URL gốc của frontend cho link trong mail; **bắt buộc** khi production |
+| `FALLBACK_LANGUAGE`          | `vi`                              | Ngôn ngữ mặc định (`vi` \| `en`)                                      |
+| `TRUST_PROXY`                | `0`                               | Số reverse proxy phía trước (Caddy trên VPS = `1`)                    |
+| `DATABASE_URL`               | **bắt buộc**                      | Chuỗi kết nối PostgreSQL                                              |
+| `DATABASE_POOL_MAX`          | `10`                              |                                                                       |
+| `DATABASE_LOGGING`           | `false`                           | Log câu SQL                                                           |
+| `REDIS_URL`                  | **bắt buộc**                      |                                                                       |
+| `REDIS_KEY_PREFIX`           | `elearning:`                      | Prefix cho mọi key Redis                                              |
+| `JWT_SECRET`                 | **bắt buộc**                      | Khoá ký JWT (HS256), tối thiểu 32 ký tự                               |
+| `JWT_EXPIRES_IN_SECONDS`     | `86400`                           | Thời hạn access token                                                 |
+| `MAIL_HOST`                  | `localhost`                       | SMTP server; **bắt buộc** khi production                              |
+| `MAIL_PORT`                  | `1025`                            | `1025` = Mailpit                                                      |
+| `MAIL_SECURE`                | `false`                           | `true` = TLS ngay từ đầu (465); `false` = STARTTLS                    |
+| `MAIL_USER`, `MAIL_PASSWORD` |                                   | Bỏ trống khi SMTP không cần đăng nhập                                 |
+| `MAIL_FROM`                  | `e-Learning <no-reply@localhost>` | Người gửi; **bắt buộc** khi production                                |
+| `MAIL_RATE_PER_HOUR`         | `0`                               | Số mail tối đa mỗi giờ (mọi instance); `0` = không giới hạn           |
 
 Có thể ghi đè riêng cho máy mình bằng `.env.local` (được ưu tiên hơn `.env`).
 
@@ -368,6 +370,13 @@ src/
 
 - **Auth:** mọi route cần `Authorization: Bearer <token>` trừ route có `@Public()`. Giới hạn
   quyền admin bằng `@Roles(UserRole.Admin)`. Đăng xuất đưa token vào blacklist trên Redis.
+- **Xác nhận email, quên mật khẩu:** đăng ký không trả token mà gửi link
+  `FRONTEND_URL/verify-email?token=…` (24 giờ). Chưa xác nhận thì đăng nhập đúng mật khẩu bị
+  `403 EMAIL_NOT_VERIFIED` và được gửi link mới, nên link hết hạn chỉ cần đăng nhập lại.
+  `POST /auth/forgot-password` gửi `FRONTEND_URL/reset-password?token=…` (30 phút);
+  `POST /auth/reset-password` đặt mật khẩu mới, đăng xuất mọi phiên và coi như email đã xác nhận.
+  Token ngẫu nhiên 256 bit, dùng một lần, Redis chỉ giữ SHA-256 của nó; mỗi tài khoản nhận tối đa
+  một mail mỗi loại trong 2 phút. Frontend cần hai trang trên: đọc `token` trên URL rồi gọi API.
 - **Ngôn ngữ:** chọn bằng `?lang=`, header `x-lang` hoặc `Accept-Language`; mặc định `vi`.
 - **Lỗi:** mọi lỗi trả cùng format `{ statusCode, code, message, errors?, path, timestamp }`.
   Lỗi nghiệp vụ dùng `AppException` với `code` cố định và `message` lấy từ `src/i18n/*/errors.json`.
@@ -376,8 +385,9 @@ src/
 - **Mail:** gọi `MailService.send({ to, template, context })` sau khi transaction commit. Hàm này
   chỉ đưa job vào queue và không bao giờ throw, nên mail lỗi không làm hỏng request; worker thử
   lại 3 lần (1, 2, 4 phút). Template ở `src/mail/templates/<tên>.{html,text}.hbs`, tiếng Việt ở
-  trên, tiếng Anh ở dưới. Hiện gửi: chào mừng khi đăng ký; duyệt / từ chối / thu hồi đăng ký khoá
-  học. Route public nào gửi mail phải có rate limit (`@Throttle`), như `POST /auth/register`.
+  trên, tiếng Anh ở dưới. Hiện gửi: xác nhận email khi đăng ký; đặt lại mật khẩu; báo mật khẩu đã
+  đổi; duyệt / từ chối / thu hồi đăng ký khoá học. Route public nào gửi mail phải có rate limit
+  (`@Throttle`), như `POST /auth/register`.
 - **Commit:** theo [Conventional Commits](https://www.conventionalcommits.org/), ví dụ
   `feat(auth): add login rate limit`. Husky chạy lint-staged (ESLint, Prettier) trước khi
   commit và commitlint kiểm tra commit message.

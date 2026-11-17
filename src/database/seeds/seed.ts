@@ -33,6 +33,8 @@ async function seedUsersTable(manager: EntityManager): Promise<void> {
       passwordHash: await hashPassword(user.password),
       fullName: user.fullName,
       role: user.role,
+      // Seed accounts log in right away, without a verification mail.
+      emailVerifiedAt: new Date(),
     })),
   );
   await manager.upsert(User, rows, ['id']);

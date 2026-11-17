@@ -8,6 +8,8 @@ import { MailModule } from '../mail/mail.module';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { GoogleAuthService } from './google-auth.service';
+import { GoogleIdTokenVerifier } from './google-id-token.verifier';
 import { ProfileController } from './profile.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
@@ -31,6 +33,11 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
   ],
   controllers: [AuthController, ProfileController],
-  providers: [AuthService, JwtStrategy],
+  providers: [
+    AuthService,
+    GoogleAuthService,
+    GoogleIdTokenVerifier,
+    JwtStrategy,
+  ],
 })
 export class AuthModule {}

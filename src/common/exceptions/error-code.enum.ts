@@ -14,6 +14,12 @@ export enum ErrorCode {
   EmailAlreadyExists = 'EMAIL_ALREADY_EXISTS',
   InvalidCredentials = 'INVALID_CREDENTIALS',
   InvalidCurrentPassword = 'INVALID_CURRENT_PASSWORD',
+  GoogleSignInDisabled = 'GOOGLE_SIGN_IN_DISABLED',
+  InvalidGoogleToken = 'INVALID_GOOGLE_TOKEN',
+  GoogleEmailNotVerified = 'GOOGLE_EMAIL_NOT_VERIFIED',
+  AccountExistsUsePassword = 'ACCOUNT_EXISTS_USE_PASSWORD',
+  GoogleAccountAlreadyLinked = 'GOOGLE_ACCOUNT_ALREADY_LINKED',
+  GoogleAlreadyLinked = 'GOOGLE_ALREADY_LINKED',
 
   // Courses & lessons
   CourseNotFound = 'COURSE_NOT_FOUND',

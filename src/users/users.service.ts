@@ -2,25 +2,41 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserRole } from '../common/enums/user-role.enum';
+import { UserIdentity } from './entities/user-identity.entity';
 import { User } from './entities/user.entity';
-
-export type CreateUserInput = {
-  email: string;
-  passwordHash: string;
-  fullName: string;
-  role?: UserRole;
-};
-
-export type UpdateProfileInput = {
-  fullName?: string;
-  avatarUrl?: string | null;
-};
+import { IdentityProvider } from './enums/identity-provider.enum';
+import type {
+  CreateUserInput,
+  CreateUserWithIdentityInput,
+  IdentityInput,
+  UpdateProfileInput,
+} from './users.types';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User) private readonly users: Repository<User>,
+    @InjectRepository(UserIdentity)
+    private readonly identities: Repository<UserIdentity>,
   ) {}
+
+  // The user an outside account logs in as, if it was linked.
+  async findByIdentity(
+    provider: IdentityProvider,
+    providerUserId: string,
+  ): Promise<User | null> {
+    const identity = await this.identities.findOneBy({
+      provider,
+      providerUserId,
+    });
+    return identity ? this.findById(identity.userId) : null;
+  }
+
+  // Throws a unique violation when the outside account is linked already,
+  // or the user already has one from this provider.
+  async linkIdentity(userId: string, identity: IdentityInput): Promise<void> {
+    await this.identities.insert({ userId, ...identity });
+  }
 
   findById(id: string): Promise<User | null> {
     return this.users.findOneBy({ id });
@@ -77,6 +93,26 @@ export class UsersService {
       .execute();
     const rows = result.raw as { token_version: number }[];
     return rows.length === 1 ? rows[0].token_version : null;
+  }
+
+  // One transaction, so a failed identity insert leaves no user behind.
+  // Throws a unique violation when the email or the identity is taken.
+  createWithIdentity({
+    identity,
+    ...input
+  }: CreateUserWithIdentityInput): Promise<User> {
+    return this.users.manager.transaction(async (manager) => {
+      const user = await manager.save(
+        manager.create(User, {
+          ...input,
+          role: UserRole.User,
+          passwordHash: null,
+          tokenVersion: 0,
+        }),
+      );
+      await manager.insert(UserIdentity, { userId: user.id, ...identity });
+      return user;
+    });
   }
 
   create(input: CreateUserInput): Promise<User> {

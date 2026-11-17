@@ -12,6 +12,7 @@ import {
   ApiCreatedResponse,
   ApiNoContentResponse,
   ApiOkResponse,
+  ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
@@ -20,11 +21,14 @@ import { ONE_MINUTE_MS } from '../common/constants/date.constants';
 import { Public } from '../common/decorators/public.decorator';
 import { SWAGGER_BEARER_AUTH } from '../config/swagger';
 import {
+  GOOGLE_LOGIN_LIMIT_PER_MINUTE,
   LOGIN_LIMIT_PER_MINUTE,
   REGISTER_LIMIT_PER_MINUTE,
 } from './auth.constants';
 import { AuthService } from './auth.service';
+import { GoogleAuthService } from './google-auth.service';
 import { AuthResponseDto } from './dto/auth-response.dto';
+import { GoogleIdTokenDto } from './dto/google-id-token.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { extractBearerToken } from './jwt-payload';
@@ -32,7 +36,10 @@ import { extractBearerToken } from './jwt-payload';
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly googleAuthService: GoogleAuthService,
+  ) {}
 
   @Public()
   @Post('register')
@@ -55,6 +62,23 @@ export class AuthController {
   @ApiOkResponse({ type: AuthResponseDto })
   login(@Body() dto: LoginDto): Promise<AuthResponseDto> {
     return this.authService.login(dto);
+  }
+
+  @Public()
+  @Post('google')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({
+    default: { limit: GOOGLE_LOGIN_LIMIT_PER_MINUTE, ttl: ONE_MINUTE_MS },
+  })
+  @ApiOperation({
+    summary: 'Log in (or sign up) with a Google ID token',
+    description:
+      'First login creates an account without a password. 409 ACCOUNT_EXISTS_USE_PASSWORD when the email belongs to a password account: log in with the password, then link Google from the profile. 503 GOOGLE_SIGN_IN_DISABLED when GOOGLE_CLIENT_ID is not set.',
+  })
+  @ApiOkResponse({ type: AuthResponseDto })
+  loginWithGoogle(@Body() dto: GoogleIdTokenDto): Promise<AuthResponseDto> {
+    return this.googleAuthService.login(dto);
   }
 
   @Post('logout')

@@ -1,0 +1,8 @@
+# Google sign-in test page (nginx service google-login) on its own host.
+# The release workflow copies this file into sites/, which the Caddyfile
+# imports, only when the GOOGLE_LOGIN_HOST variable is set; the host needs a
+# DNS record pointing at the VPS, and Caddy gets its certificate.
+{$GOOGLE_LOGIN_HOST} {
+	encode gzip
+	reverse_proxy google-login:80
+}

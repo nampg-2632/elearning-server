@@ -29,6 +29,21 @@ services:
       mailpit:
         condition: service_started
 
+  # Google sign-in test page on http://localhost:5173 (same files as
+  # production). Calls the app on localhost, so CORS_ORIGINS must list
+  # http://localhost:5173.
+  google-login:
+    image: nginx:1.27-alpine
+    environment:
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_LOGIN_API_BASE: http://localhost:${APP_PORT:-3000}/api/v1
+      GOOGLE_LOGIN_API_ORIGIN: http://localhost:${APP_PORT:-3000}
+    ports:
+      - ${GOOGLE_LOGIN_PORT:-5173}:80
+    volumes:
+      - ./deploy/nginx/google-login.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./public/google-login:/usr/share/nginx/html:ro
+
   postgres:
     image: postgres:16-alpine
     # Credentials come from .env (not committed); compose stops if one is

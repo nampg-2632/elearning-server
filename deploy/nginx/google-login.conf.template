@@ -1,0 +1,31 @@
+# nginx for the Google sign-in test page. The official image runs envsubst on
+# this file at start, filling in GOOGLE_CLIENT_ID, GOOGLE_LOGIN_API_BASE (API
+# URL the page calls) and GOOGLE_LOGIN_API_ORIGIN (allowed by the CSP);
+# nginx's own $variables are left alone. The client ID is public (it is in
+# every page that shows a Google button), so serving it is fine. All three
+# variables must be set, even empty: nginx refuses to start on a ${NAME}
+# left unreplaced.
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    server_tokens off;
+
+    location = /config.js {
+        default_type application/javascript;
+        add_header Cache-Control "no-store" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        return 200 'window.GOOGLE_LOGIN_CONFIG = { clientIds: "${GOOGLE_CLIENT_ID}", apiBase: "${GOOGLE_LOGIN_API_BASE}" };\n';
+    }
+
+    location / {
+        try_files $uri $uri/ =404;
+        add_header Cache-Control "no-cache" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        # Sign in with Google needs the origin in the referrer and its popup
+        # to talk back to this page.
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Cross-Origin-Opener-Policy "same-origin-allow-popups" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; frame-src https://accounts.google.com/gsi/; connect-src 'self' ${GOOGLE_LOGIN_API_ORIGIN} https://accounts.google.com/gsi/; img-src 'self' data: https://*.googleusercontent.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" always;
+    }
+}

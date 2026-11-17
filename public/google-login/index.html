@@ -1,0 +1,43 @@
+<!doctype html>
+<!--
+  Test page for Sign in with Google, served by nginx with
+  deploy/nginx/google-login.conf.template (see README, "Thử đăng nhập
+  Google"). Gets a Google ID token, logs in through POST
+  <apiBase>/auth/google, then can call GET /me and log out (POST
+  /auth/logout). config.js, built by nginx from GOOGLE_CLIENT_ID and
+  GOOGLE_LOGIN_API_BASE, holds the settings.
+-->
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Đăng nhập Google</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="config.js"></script>
+    <script src="app.js" defer></script>
+    <!-- Deferred after app.js, which defines onGoogleLibraryLoad first. -->
+    <script src="https://accounts.google.com/gsi/client" defer></script>
+  </head>
+  <body>
+    <h1>Đăng nhập Google</h1>
+    <p>
+      Trang thử nghiệm: bấm nút để đăng nhập, trang gọi API và hiện kết quả.
+    </p>
+    <div id="button"></div>
+    <div id="session" hidden>
+      <button type="button" id="me">GET /me</button>
+      <button type="button" id="logout">Đăng xuất</button>
+    </div>
+    <p id="status"></p>
+
+    <label for="result">Phản hồi của API</label>
+    <pre id="result"></pre>
+
+    <label for="idToken">ID token của Google (hạn 1 giờ)</label>
+    <textarea id="idToken" readonly></textarea>
+
+    <p class="muted">
+      <a href="privacy.html">Chính sách bảo mật / Privacy policy</a>
+    </p>
+  </body>
+</html>

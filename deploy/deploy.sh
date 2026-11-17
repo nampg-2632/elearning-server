@@ -68,6 +68,10 @@ compose "$tag" up -d --remove-orphans
 if ! grep -qE '^COMPOSE_PROFILES=.*\bmta\b' .env; then
   compose "$tag" --profile mta rm -sf postfix >/dev/null 2>&1 || true
 fi
+# Same for the Google sign-in test page once GOOGLE_LOGIN_HOST is unset.
+if ! grep -qE '^COMPOSE_PROFILES=.*\bgoogle-login\b' .env; then
+  compose "$tag" --profile google-login rm -sf google-login >/dev/null 2>&1 || true
+fi
 
 if wait_ready "$tag"; then
   set_current "$tag"

@@ -1,3 +1,8 @@
+import {
+  ONE_DAY_SECONDS,
+  ONE_MINUTE_SECONDS,
+} from '../common/constants/date.constants';
+
 // Requests per minute per client IP on the public auth routes. Counted in
 // memory by ThrottlerGuard, so each app instance keeps its own count.
 export const LOGIN_LIMIT_PER_MINUTE = 5;
@@ -16,3 +21,15 @@ export const GOOGLE_ISSUERS = [
 ];
 // Google ID tokens are around 1 KB; the bound only stops huge input.
 export const GOOGLE_ID_TOKEN_MAX_LENGTH = 4096;
+
+// Refreshing is cheap but public; the bound only stops abuse. A client
+// refreshes about once per access token lifetime.
+export const REFRESH_LIMIT_PER_MINUTE = 30;
+// 256 bits of randomness; 43 characters in base64url.
+export const REFRESH_TOKEN_BYTES = 32;
+// Upper bound for the DTO; a real token is 43 characters.
+export const REFRESH_TOKEN_MAX_LENGTH = 128;
+
+// Defaults of JWT_EXPIRES_IN_SECONDS and REFRESH_TOKEN_EXPIRES_IN_SECONDS.
+export const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 15 * ONE_MINUTE_SECONDS;
+export const DEFAULT_REFRESH_TOKEN_TTL_SECONDS = 30 * ONE_DAY_SECONDS;

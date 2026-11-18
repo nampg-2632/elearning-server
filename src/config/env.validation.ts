@@ -84,7 +84,14 @@ class EnvironmentVariables {
   @Type(() => Number)
   @IsInt()
   @Min(60)
-  JWT_EXPIRES_IN_SECONDS: number = 86400;
+  JWT_EXPIRES_IN_SECONDS: number = 900;
+
+  // Each refresh issues a new token with a full lifetime, so a session
+  // ends after this long without use.
+  @Type(() => Number)
+  @IsInt()
+  @Min(60)
+  REFRESH_TOKEN_EXPIRES_IN_SECONDS: number = 2592000;
 
   // Comma-separated OAuth client IDs (Google Cloud Console, type Web
   // application); unset = Google sign-in is off.

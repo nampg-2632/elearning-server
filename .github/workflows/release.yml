@@ -134,6 +134,9 @@ jobs:
           # Host of the Google sign-in test page; unset = page off.
           GOOGLE_LOGIN_HOST: ${{ vars.GOOGLE_LOGIN_HOST }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          # Token lifetimes in seconds, e.g. 900 and 2592000.
+          JWT_EXPIRES_IN_SECONDS: ${{ vars.JWT_EXPIRES_IN_SECONDS }}
+          REFRESH_TOKEN_EXPIRES_IN_SECONDS: ${{ vars.REFRESH_TOKEN_EXPIRES_IN_SECONDS }}
           POSTGRES_USER: ${{ vars.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_DB: ${{ vars.POSTGRES_DB }}
@@ -152,6 +155,8 @@ jobs:
           : "${POSTGRES_USER:?set the POSTGRES_USER variable of the prod environment}"
           : "${POSTGRES_DB:?set the POSTGRES_DB variable of the prod environment}"
           : "${MAIL_FROM:?set the MAIL_FROM secret of the prod environment}"
+          : "${JWT_EXPIRES_IN_SECONDS:?set the JWT_EXPIRES_IN_SECONDS variable of the prod environment}"
+          : "${REFRESH_TOKEN_EXPIRES_IN_SECONDS:?set the REFRESH_TOKEN_EXPIRES_IN_SECONDS variable of the prod environment}"
           umask 077
           profiles=()
           case $API_HOST in
@@ -165,6 +170,8 @@ jobs:
           CORS_ORIGINS=$CORS_ORIGINS
           GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
           JWT_SECRET=$JWT_SECRET
+          JWT_EXPIRES_IN_SECONDS=$JWT_EXPIRES_IN_SECONDS
+          REFRESH_TOKEN_EXPIRES_IN_SECONDS=$REFRESH_TOKEN_EXPIRES_IN_SECONDS
           POSTGRES_USER=$POSTGRES_USER
           POSTGRES_PASSWORD=$POSTGRES_PASSWORD
           POSTGRES_DB=$POSTGRES_DB

@@ -10,6 +10,7 @@
   "EMAIL_ALREADY_EXISTS": "Email is already in use",
   "INVALID_CREDENTIALS": "Invalid email or password",
   "INVALID_CURRENT_PASSWORD": "The current password is incorrect",
+  "INVALID_REFRESH_TOKEN": "The session has expired, please log in again",
   "GOOGLE_SIGN_IN_DISABLED": "Sign in with Google is not enabled",
   "INVALID_GOOGLE_TOKEN": "The Google sign-in is invalid or expired, please try again",
   "GOOGLE_EMAIL_NOT_VERIFIED": "The email of this Google account is not verified by Google",

@@ -11,9 +11,12 @@ import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 import { blacklistKey, JwtPayload } from './jwt-payload';
+import { RefreshTokensService } from './refresh-tokens.service';
 
 const SECRET = 'test-secret-test-secret-test-secret';
 const EXPIRES_IN = 3600;
+const REFRESH_EXPIRES_IN = 86400;
+const SESSION_ID = '6f0c1a2b-0000-4000-8000-0000000000f1';
 
 const buildUser = (overrides: Partial<User> = {}): User =>
   Object.assign(new User(), {
@@ -50,6 +53,14 @@ describe('AuthService', () => {
       | 'findByEmailWithPassword'
       | 'findPasswordHash'
       | 'replacePassword'
+      | 'findById'
+      | 'bumpTokenVersion'
+    >
+  >;
+  let refreshTokens: jest.Mocked<
+    Pick<
+      RefreshTokensService,
+      'startSession' | 'rotate' | 'revokeSession' | 'revokeAllForUser'
     >
   >;
   let redis: jest.Mocked<Pick<RedisService, 'set'>>;
@@ -66,6 +77,16 @@ describe('AuthService', () => {
       findByEmailWithPassword: jest.fn(),
       findPasswordHash: jest.fn(),
       replacePassword: jest.fn(),
+      findById: jest.fn(),
+      bumpTokenVersion: jest.fn(),
+    };
+    refreshTokens = {
+      startSession: jest
+        .fn()
+        .mockResolvedValue({ token: 'refresh-1', sessionId: SESSION_ID }),
+      rotate: jest.fn(),
+      revokeSession: jest.fn(),
+      revokeAllForUser: jest.fn(),
     };
     redis = { set: jest.fn() };
     mail = { send: jest.fn().mockResolvedValue(undefined) };
@@ -73,12 +94,14 @@ describe('AuthService', () => {
       {
         jwtSecret: SECRET,
         jwtExpiresInSeconds: EXPIRES_IN,
+        refreshTokenExpiresInSeconds: REFRESH_EXPIRES_IN,
         googleClientIds: [],
       },
       jwtService,
       redis as unknown as RedisService,
       usersService as unknown as UsersService,
       mail as unknown as MailService,
+      refreshTokens as unknown as RefreshTokensService,
     );
   });
 
@@ -143,7 +166,13 @@ describe('AuthService', () => {
       });
 
       expect(result.user.email).toBe('nam@example.com');
-      expect(jwtService.verify<JwtPayload>(result.accessToken).tv).toBe(0);
+      const payload = jwtService.verify<JwtPayload>(result.accessToken);
+      expect(payload).toMatchObject({ tv: 0, sid: SESSION_ID });
+      expect(result).toMatchObject({
+        refreshToken: 'refresh-1',
+        refreshExpiresIn: REFRESH_EXPIRES_IN,
+      });
+      expect(refreshTokens.startSession).toHaveBeenCalledWith(result.user.id);
       expect(result.user).not.toHaveProperty('passwordHash');
     });
 
@@ -170,7 +199,84 @@ describe('AuthService', () => {
     });
   });
 
+  describe('refresh', () => {
+    it('returns a new pair for the same session', async () => {
+      const user = buildUser({ tokenVersion: 2 });
+      refreshTokens.rotate.mockResolvedValue({
+        token: 'refresh-2',
+        sessionId: SESSION_ID,
+        userId: user.id,
+      });
+      usersService.findById.mockResolvedValue(user);
+
+      const result = await service.refresh({ refreshToken: 'refresh-1' });
+
+      expect(refreshTokens.rotate).toHaveBeenCalledWith('refresh-1');
+      expect(refreshTokens.startSession).not.toHaveBeenCalled();
+      expect(result.refreshToken).toBe('refresh-2');
+      expect(result.expiresIn).toBe(EXPIRES_IN);
+      const payload = jwtService.verify<JwtPayload>(result.accessToken);
+      expect(payload).toMatchObject({ sub: user.id, tv: 2, sid: SESSION_ID });
+    });
+
+    it('rejects a token that cannot be rotated', async () => {
+      refreshTokens.rotate.mockResolvedValue(null);
+
+      await expectAppError(
+        service.refresh({ refreshToken: 'used' }),
+        ErrorCode.InvalidRefreshToken,
+        HttpStatus.UNAUTHORIZED,
+      );
+      expect(usersService.findById).not.toHaveBeenCalled();
+    });
+
+    it('rejects a token whose user is gone', async () => {
+      refreshTokens.rotate.mockResolvedValue({
+        token: 'refresh-2',
+        sessionId: SESSION_ID,
+        userId: 'gone',
+      });
+      usersService.findById.mockResolvedValue(null);
+
+      await expectAppError(
+        service.refresh({ refreshToken: 'refresh-1' }),
+        ErrorCode.InvalidRefreshToken,
+        HttpStatus.UNAUTHORIZED,
+      );
+    });
+  });
+
+  describe('logoutAll', () => {
+    it('revokes every refresh token and bumps the token version', async () => {
+      const user = buildUser();
+
+      await service.logoutAll(user);
+
+      expect(refreshTokens.revokeAllForUser).toHaveBeenCalledWith(user.id);
+      expect(usersService.bumpTokenVersion).toHaveBeenCalledWith(user.id);
+    });
+  });
+
   describe('logout', () => {
+    it('revokes the refresh tokens of the session', async () => {
+      const token = jwtService.sign({
+        sub: 'u1',
+        role: UserRole.User,
+        sid: SESSION_ID,
+      });
+
+      await service.logout(token);
+
+      expect(refreshTokens.revokeSession).toHaveBeenCalledWith(SESSION_ID);
+      expect(redis.set).toHaveBeenCalled();
+    });
+
+    it('skips the refresh tokens for a token without a session', async () => {
+      await service.logout(jwtService.sign({ sub: 'u1', role: UserRole.User }));
+
+      expect(refreshTokens.revokeSession).not.toHaveBeenCalled();
+    });
+
     it('blacklists the token for its remaining lifetime', async () => {
       const token = jwtService.sign({ sub: 'u1', role: UserRole.User });
 
@@ -221,6 +327,11 @@ describe('AuthService', () => {
       const payload = jwtService.verify<JwtPayload>(result.accessToken);
       expect(payload).toMatchObject({ sub: user.id, tv: 1 });
       expect(result.user).not.toHaveProperty('tokenVersion');
+      expect(refreshTokens.revokeAllForUser).toHaveBeenCalledWith(user.id);
+      // The new session starts after the old ones are revoked.
+      expect(
+        refreshTokens.revokeAllForUser.mock.invocationCallOrder[0],
+      ).toBeLessThan(refreshTokens.startSession.mock.invocationCallOrder[0]);
     });
 
     it('rejects a wrong current password without changing anything', async () => {
@@ -233,6 +344,7 @@ describe('AuthService', () => {
         HttpStatus.BAD_REQUEST,
       );
       expect(usersService.replacePassword).not.toHaveBeenCalled();
+      expect(refreshTokens.revokeAllForUser).not.toHaveBeenCalled();
     });
 
     it('rejects when a concurrent change replaced the hash first', async () => {

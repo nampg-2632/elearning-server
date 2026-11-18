@@ -10,6 +10,7 @@
   "EMAIL_ALREADY_EXISTS": "Email đã được sử dụng",
   "INVALID_CREDENTIALS": "Email hoặc mật khẩu không đúng",
   "INVALID_CURRENT_PASSWORD": "Mật khẩu hiện tại không đúng",
+  "INVALID_REFRESH_TOKEN": "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại",
   "GOOGLE_SIGN_IN_DISABLED": "Đăng nhập bằng Google chưa được bật",
   "INVALID_GOOGLE_TOKEN": "Phiên đăng nhập Google không hợp lệ hoặc đã hết hạn, vui lòng thử lại",
   "GOOGLE_EMAIL_NOT_VERIFIED": "Email của tài khoản Google chưa được Google xác minh",

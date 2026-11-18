@@ -15,8 +15,11 @@ import { UsersService } from '../users/users.service';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
 import { blacklistKey, JwtPayload } from './jwt-payload';
+import type { IssuedRefreshToken } from './auth.types';
+import { RefreshTokensService } from './refresh-tokens.service';
 
 @Injectable()
 export class AuthService {
@@ -31,6 +34,7 @@ export class AuthService {
     private readonly redis: RedisService,
     private readonly usersService: UsersService,
     private readonly mail: MailService,
+    private readonly refreshTokens: RefreshTokensService,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
@@ -77,13 +81,38 @@ export class AuthService {
     return this.issueToken(user);
   }
 
-  // Blacklists the token until it would have expired anyway.
+  // Exchanges a refresh token for a new access token and refresh token of
+  // the same session.
+  async refresh(dto: RefreshTokenDto): Promise<AuthResponseDto> {
+    const rotated = await this.refreshTokens.rotate(dto.refreshToken);
+    const user = rotated && (await this.usersService.findById(rotated.userId));
+    if (!rotated || !user) {
+      throw new AppException({
+        code: ErrorCode.InvalidRefreshToken,
+        messageKey: 'errors.INVALID_REFRESH_TOKEN',
+        status: HttpStatus.UNAUTHORIZED,
+      });
+    }
+    return this.buildResponse(user, rotated);
+  }
+
+  // Ends the session: revokes its refresh tokens and blacklists the access
+  // token until it would have expired anyway.
   async logout(token: string): Promise<void> {
     const payload = this.jwtService.decode<JwtPayload | null>(token);
+    if (payload?.sid) {
+      await this.refreshTokens.revokeSession(payload.sid);
+    }
     const ttl = (payload?.exp ?? 0) - Math.floor(Date.now() / 1000);
     if (ttl > 0) {
       await this.redis.set(blacklistKey(token), '1', ttl);
     }
+  }
+
+  // Ends every session of the user, including the one making the request.
+  async logoutAll(user: User): Promise<void> {
+    await this.refreshTokens.revokeAllForUser(user.id);
+    await this.usersService.bumpTokenVersion(user.id);
   }
 
   // Signs out every session of the user (token_version is bumped), including
@@ -107,20 +136,35 @@ export class AuthService {
       throw this.invalidCurrentPassword();
     }
 
+    await this.refreshTokens.revokeAllForUser(user.id);
     user.tokenVersion = tokenVersion;
     return this.issueToken(user);
   }
 
+  // Starts a new session for the user.
   async issueToken(user: User): Promise<AuthResponseDto> {
+    return this.buildResponse(
+      user,
+      await this.refreshTokens.startSession(user.id),
+    );
+  }
+
+  private async buildResponse(
+    user: User,
+    refreshToken: IssuedRefreshToken,
+  ): Promise<AuthResponseDto> {
     const payload: JwtPayload = {
       sub: user.id,
       role: user.role,
       tv: user.tokenVersion,
+      sid: refreshToken.sessionId,
     };
     const accessToken = await this.jwtService.signAsync(payload);
     return {
       accessToken,
       expiresIn: this.config.jwtExpiresInSeconds,
+      refreshToken: refreshToken.token,
+      refreshExpiresIn: this.config.refreshTokenExpiresInSeconds,
       user: UserResponseDto.fromEntity(user),
     };
   }

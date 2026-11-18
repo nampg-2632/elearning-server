@@ -214,12 +214,14 @@ với bản đang chạy: thêm bảng/cột thì được, xoá hoặc đổi t
 
    Và các variable (tab **Environment variables**, không phải bí mật):
 
-   | Variable            | Giá trị                                                               |
-   | ------------------- | --------------------------------------------------------------------- |
-   | `POSTGRES_USER`     | User của database, ví dụ `elearning`                                  |
-   | `POSTGRES_DB`       | Tên database, ví dụ `elearning`; cả hai chỉ áp dụng lần đầu           |
-   | `GOOGLE_CLIENT_ID`  | OAuth client ID (loại Web) cho đăng nhập Google; bỏ trống = tắt       |
-   | `GOOGLE_LOGIN_HOST` | Subdomain cho trang thử đăng nhập Google; bỏ trống = không chạy trang |
+   | Variable                           | Giá trị                                                               |
+   | ---------------------------------- | --------------------------------------------------------------------- |
+   | `POSTGRES_USER`                    | User của database, ví dụ `elearning`                                  |
+   | `POSTGRES_DB`                      | Tên database, ví dụ `elearning`; cả hai chỉ áp dụng lần đầu           |
+   | `GOOGLE_CLIENT_ID`                 | OAuth client ID (loại Web) cho đăng nhập Google; bỏ trống = tắt       |
+   | `GOOGLE_LOGIN_HOST`                | Subdomain cho trang thử đăng nhập Google; bỏ trống = không chạy trang |
+   | `JWT_EXPIRES_IN_SECONDS`           | Thời hạn access token (giây), ví dụ `900`; **bắt buộc**               |
+   | `REFRESH_TOKEN_EXPIRES_IN_SECONDS` | Thời hạn refresh token (giây), ví dụ `2592000`; **bắt buộc**          |
 
    Cấu hình mail: xem [Gửi mail trên production](#gửi-mail-trên-production).
 

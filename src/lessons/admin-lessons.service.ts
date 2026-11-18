@@ -244,6 +244,8 @@ export class AdminLessonsService {
     });
   }
 
+  // Positions are renumbered from 1: deleting a word leaves a gap in the
+  // stored ones.
   private findWords(lessonId: string): Promise<AdminLessonWordDto[]> {
     return this.lessons.manager
       .createQueryBuilder(LessonWord, 'lw')
@@ -251,7 +253,7 @@ export class AdminLessonsService {
       .select('word.id', 'id')
       .addSelect('word.content', 'content')
       .addSelect('word.meaning', 'meaning')
-      .addSelect('lw.position', 'position')
+      .addSelect('ROW_NUMBER() OVER (ORDER BY lw.position)::int', 'position')
       .where('lw.lessonId = :lessonId', { lessonId })
       .orderBy('lw.position', 'ASC')
       .getRawMany<AdminLessonWordDto>();

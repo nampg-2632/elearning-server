@@ -5,6 +5,7 @@ import { UserRole } from '../common/enums/user-role.enum';
 import { AppException } from '../common/exceptions/app.exception';
 import { ErrorCode } from '../common/exceptions/error-code.enum';
 import { hashPassword, verifyPassword } from '../common/utils/password';
+import { MailTemplate } from '../mail/enums/mail-template.enum';
 import type { MailService } from '../mail/mail.service';
 import { RedisService } from '../redis/redis.service';
 import { User } from '../users/entities/user.entity';
@@ -129,6 +130,21 @@ describe('AuthService', () => {
       expect(payload).toMatchObject({ sub: result.user.id, role: 'user' });
     });
 
+    it('queues a welcome mail for the new user', async () => {
+      usersService.existsByEmail.mockResolvedValue(false);
+      usersService.create.mockImplementation((input) =>
+        Promise.resolve(buildUser(input)),
+      );
+
+      await service.register(dto);
+
+      expect(mail.send).toHaveBeenCalledWith({
+        to: 'nam@example.com',
+        template: MailTemplate.Welcome,
+        context: { fullName: 'Nam', email: 'nam@example.com' },
+      });
+    });
+
     it('rejects an email that is already registered', async () => {
       usersService.existsByEmail.mockResolvedValue(true);
 
@@ -138,6 +154,7 @@ describe('AuthService', () => {
         HttpStatus.CONFLICT,
       );
       expect(usersService.create).not.toHaveBeenCalled();
+      expect(mail.send).not.toHaveBeenCalled();
     });
 
     it('maps a unique violation from a concurrent register to 409', async () => {

@@ -23,6 +23,7 @@ import { SWAGGER_BEARER_AUTH } from '../config/swagger';
 import {
   GOOGLE_LOGIN_LIMIT_PER_MINUTE,
   LOGIN_LIMIT_PER_MINUTE,
+  REFRESH_LIMIT_PER_MINUTE,
   REGISTER_LIMIT_PER_MINUTE,
 } from './auth.constants';
 import { AuthService } from './auth.service';
@@ -30,6 +31,7 @@ import { GoogleAuthService } from './google-auth.service';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { GoogleIdTokenDto } from './dto/google-id-token.dto';
 import { LoginDto } from './dto/login.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
 import { extractBearerToken } from './jwt-payload';
 
@@ -81,9 +83,31 @@ export class AuthController {
     return this.googleAuthService.login(dto);
   }
 
+  @Public()
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({
+    default: { limit: REFRESH_LIMIT_PER_MINUTE, ttl: ONE_MINUTE_MS },
+  })
+  @ApiOperation({
+    summary: 'Get a new access token with the refresh token',
+    description:
+      'Returns a new access token and a new refresh token; the one sent is used up. Sending a used refresh token again signs out that session (it may have leaked). 401 INVALID_REFRESH_TOKEN: unknown, expired, revoked or reused token; log in again.',
+  })
+  @ApiOkResponse({ type: AuthResponseDto })
+  refresh(@Body() dto: RefreshTokenDto): Promise<AuthResponseDto> {
+    return this.authService.refresh(dto);
+  }
+
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth(SWAGGER_BEARER_AUTH)
+  @ApiOperation({
+    summary: 'Log out of this session',
+    description:
+      'Revokes the access token and every refresh token of its session.',
+  })
   @ApiNoContentResponse()
   async logout(@Req() request: Request): Promise<void> {
     // The global guard already validated this token, so it is present.

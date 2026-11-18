@@ -9,6 +9,7 @@ describe('GoogleIdTokenVerifier', () => {
   const verifier = new GoogleIdTokenVerifier({
     jwtSecret: 'x',
     jwtExpiresInSeconds: 60,
+    refreshTokenExpiresInSeconds: 600,
     googleClientIds: CLIENT_IDS,
   });
 
@@ -89,6 +90,7 @@ describe('GoogleIdTokenVerifier', () => {
       new GoogleIdTokenVerifier({
         jwtSecret: 'x',
         jwtExpiresInSeconds: 60,
+        refreshTokenExpiresInSeconds: 600,
         googleClientIds: [],
       }).enabled,
     ).toBe(false);

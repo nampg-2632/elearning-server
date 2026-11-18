@@ -98,6 +98,11 @@ export class UsersService {
     return rows.length === 1 ? rows[0].token_version : null;
   }
 
+  // Revokes every issued access token of the user.
+  async bumpTokenVersion(id: string): Promise<void> {
+    await this.users.increment({ id }, 'tokenVersion', 1);
+  }
+
   // One transaction, so a failed identity insert leaves no user behind.
   // Throws a unique violation when the email or the identity is taken.
   createWithIdentity({

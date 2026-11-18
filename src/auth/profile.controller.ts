@@ -56,6 +56,19 @@ export class ProfileController {
     );
   }
 
+  // Ends every session of the user, this one included.
+  @Post('logout-all')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Log out of every session',
+    description:
+      'Revokes every access and refresh token of the user, including the ones of this request.',
+  })
+  @ApiNoContentResponse()
+  logoutAll(@CurrentUser() user: User): Promise<void> {
+    return this.authService.logoutAll(user);
+  }
+
   // Signs out every other session and returns a new token for this one.
   @Patch('password')
   @UseGuards(ThrottlerGuard)

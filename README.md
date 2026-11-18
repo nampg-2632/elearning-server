@@ -323,29 +323,30 @@ echo "UPDATE users SET role = 'admin' WHERE lower(email) = lower('you@example.co
 
 ## Biến môi trường
 
-| Biến                         | Mặc định                          | Mô tả                                                                    |
-| ---------------------------- | --------------------------------- | ------------------------------------------------------------------------ |
-| `NODE_ENV`                   | `development`                     | `development` \| `test` \| `production`                                  |
-| `PORT`                       | `3000`                            |                                                                          |
-| `APP_NAME`, `APP_URL`        |                                   | Tên app (Swagger) và URL gốc                                             |
-| `API_PREFIX`                 | `api/v1`                          | Prefix cho mọi route                                                     |
-| `CORS_ORIGINS`               |                                   | Danh sách origin, cách nhau bởi dấu phẩy; rỗng = tắt                     |
-| `FALLBACK_LANGUAGE`          | `vi`                              | Ngôn ngữ mặc định (`vi` \| `en`)                                         |
-| `TRUST_PROXY`                | `0`                               | Số reverse proxy phía trước (Caddy trên VPS = `1`)                       |
-| `DATABASE_URL`               | **bắt buộc**                      | Chuỗi kết nối PostgreSQL                                                 |
-| `DATABASE_POOL_MAX`          | `10`                              |                                                                          |
-| `DATABASE_LOGGING`           | `false`                           | Log câu SQL                                                              |
-| `REDIS_URL`                  | **bắt buộc**                      |                                                                          |
-| `REDIS_KEY_PREFIX`           | `elearning:`                      | Prefix cho mọi key Redis                                                 |
-| `JWT_SECRET`                 | **bắt buộc**                      | Khoá ký JWT (HS256), tối thiểu 32 ký tự                                  |
-| `JWT_EXPIRES_IN_SECONDS`     | `86400`                           | Thời hạn access token                                                    |
-| `GOOGLE_CLIENT_ID`           |                                   | OAuth client ID cho đăng nhập Google, cách nhau bởi dấu phẩy; rỗng = tắt |
-| `MAIL_HOST`                  | `localhost`                       | SMTP server; **bắt buộc** khi production                                 |
-| `MAIL_PORT`                  | `1025`                            | `1025` = Mailpit                                                         |
-| `MAIL_SECURE`                | `false`                           | `true` = TLS ngay từ đầu (465); `false` = STARTTLS                       |
-| `MAIL_USER`, `MAIL_PASSWORD` |                                   | Bỏ trống khi SMTP không cần đăng nhập                                    |
-| `MAIL_FROM`                  | `e-Learning <no-reply@localhost>` | Người gửi; **bắt buộc** khi production                                   |
-| `MAIL_RATE_PER_HOUR`         | `0`                               | Số mail tối đa mỗi giờ (mọi instance); `0` = không giới hạn              |
+| Biến                               | Mặc định                          | Mô tả                                                                     |
+| ---------------------------------- | --------------------------------- | ------------------------------------------------------------------------- |
+| `NODE_ENV`                         | `development`                     | `development` \| `test` \| `production`                                   |
+| `PORT`                             | `3000`                            |                                                                           |
+| `APP_NAME`, `APP_URL`              |                                   | Tên app (Swagger) và URL gốc                                              |
+| `API_PREFIX`                       | `api/v1`                          | Prefix cho mọi route                                                      |
+| `CORS_ORIGINS`                     |                                   | Danh sách origin, cách nhau bởi dấu phẩy; rỗng = tắt                      |
+| `FALLBACK_LANGUAGE`                | `vi`                              | Ngôn ngữ mặc định (`vi` \| `en`)                                          |
+| `TRUST_PROXY`                      | `0`                               | Số reverse proxy phía trước (Caddy trên VPS = `1`)                        |
+| `DATABASE_URL`                     | **bắt buộc**                      | Chuỗi kết nối PostgreSQL                                                  |
+| `DATABASE_POOL_MAX`                | `10`                              |                                                                           |
+| `DATABASE_LOGGING`                 | `false`                           | Log câu SQL                                                               |
+| `REDIS_URL`                        | **bắt buộc**                      |                                                                           |
+| `REDIS_KEY_PREFIX`                 | `elearning:`                      | Prefix cho mọi key Redis                                                  |
+| `JWT_SECRET`                       | **bắt buộc**                      | Khoá ký JWT (HS256), tối thiểu 32 ký tự                                   |
+| `JWT_EXPIRES_IN_SECONDS`           | `900`                             | Thời hạn access token                                                     |
+| `REFRESH_TOKEN_EXPIRES_IN_SECONDS` | `2592000`                         | Thời hạn refresh token; mỗi lần refresh cấp token mới với thời hạn đầy đủ |
+| `GOOGLE_CLIENT_ID`                 |                                   | OAuth client ID cho đăng nhập Google, cách nhau bởi dấu phẩy; rỗng = tắt  |
+| `MAIL_HOST`                        | `localhost`                       | SMTP server; **bắt buộc** khi production                                  |
+| `MAIL_PORT`                        | `1025`                            | `1025` = Mailpit                                                          |
+| `MAIL_SECURE`                      | `false`                           | `true` = TLS ngay từ đầu (465); `false` = STARTTLS                        |
+| `MAIL_USER`, `MAIL_PASSWORD`       |                                   | Bỏ trống khi SMTP không cần đăng nhập                                     |
+| `MAIL_FROM`                        | `e-Learning <no-reply@localhost>` | Người gửi; **bắt buộc** khi production                                    |
+| `MAIL_RATE_PER_HOUR`               | `0`                               | Số mail tối đa mỗi giờ (mọi instance); `0` = không giới hạn               |
 
 Có thể ghi đè riêng cho máy mình bằng `.env.local` (được ưu tiên hơn `.env`).
 
@@ -397,6 +398,10 @@ public/
 
 - **Auth:** mọi route cần `Authorization: Bearer <token>` trừ route có `@Public()`. Giới hạn
   quyền admin bằng `@Roles(UserRole.Admin)`. Đăng xuất đưa token vào blacklist trên Redis.
+- **Refresh token:** login / register / Google trả thêm `refreshToken` (chuỗi ngẫu nhiên, DB chỉ
+  lưu SHA-256 trong bảng `auth_refresh_tokens`). `POST /auth/refresh` đổi nó lấy cặp token mới; token cũ
+  hết dùng được. Gửi lại token đã dùng = coi như bị lộ, thu hồi cả phiên (`session_id`, `sid` trong
+  access token). Logout thu hồi phiên hiện tại; `POST /me/logout-all` và đổi mật khẩu thu hồi mọi phiên.
 - **Đăng nhập Google:** frontend dùng Sign in with Google, gửi `credential` (ID token) lên
   `POST /auth/google`. Backend kiểm tra chữ ký, `aud` (thuộc `GOOGLE_CLIENT_ID`), `iss`, hạn và
   `email_verified`, rồi tìm user theo `sub` trong bảng `auth_identities`, không theo email. Lần đầu

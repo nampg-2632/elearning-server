@@ -14,6 +14,7 @@ export enum ErrorCode {
   EmailAlreadyExists = 'EMAIL_ALREADY_EXISTS',
   InvalidCredentials = 'INVALID_CREDENTIALS',
   InvalidCurrentPassword = 'INVALID_CURRENT_PASSWORD',
+  InvalidRefreshToken = 'INVALID_REFRESH_TOKEN',
   GoogleSignInDisabled = 'GOOGLE_SIGN_IN_DISABLED',
   InvalidGoogleToken = 'INVALID_GOOGLE_TOKEN',
   GoogleEmailNotVerified = 'GOOGLE_EMAIL_NOT_VERIFIED',

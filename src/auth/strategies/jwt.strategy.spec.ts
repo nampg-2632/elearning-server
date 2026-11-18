@@ -30,6 +30,7 @@ describe('JwtStrategy', () => {
       {
         jwtSecret: 'x'.repeat(32),
         jwtExpiresInSeconds: 3600,
+        refreshTokenExpiresInSeconds: 600,
         googleClientIds: [],
       },
       redis as unknown as RedisService,
